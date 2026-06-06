@@ -67,7 +67,40 @@ is_local() {
 }
 
 if is_local; then
-  # ---------- Local: use Docker ----------
+  # ---------- Local: prefer existing PostgreSQL on the host, fall back to Docker ----------
+  echo "==> Checking for a local PostgreSQL on $db_host:$db_port..."
+
+  local_pg_ready() {
+    if ! command -v pg_isready > /dev/null 2>&1; then
+      return 1
+    fi
+    pg_isready -h "$db_host" -p "$db_port" -U "$POSTGRES_USER" > /dev/null 2>&1
+  }
+
+  if local_pg_ready; then
+    echo "==> Local PostgreSQL detected. Skipping Docker."
+
+    echo "==> Ensuring database '$POSTGRES_DB' exists on local PostgreSQL..."
+    db_exists="$(PGPASSWORD="$POSTGRES_PASSWORD" psql \
+      -h "$db_host" -p "$db_port" -U "$POSTGRES_USER" -d postgres -Atqc \
+      "SELECT 1 FROM pg_database WHERE datname = '$POSTGRES_DB'")"
+
+    if [ "$db_exists" != "1" ]; then
+      PGPASSWORD="$POSTGRES_PASSWORD" psql \
+        -h "$db_host" -p "$db_port" -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 \
+        -c "CREATE DATABASE \"$POSTGRES_DB\"" > /dev/null
+    fi
+
+    echo "✓ PostgreSQL ready (local). Database: $POSTGRES_DB"
+    exit 0
+  fi
+
+  if ! command -v docker > /dev/null 2>&1 || ! docker compose version > /dev/null 2>&1; then
+    echo "✗ No local PostgreSQL on $db_host:$db_port and the Docker Compose plugin is not available."
+    echo "  Install PostgreSQL locally, or install Docker + the compose plugin, and retry."
+    exit 1
+  fi
+
   echo "==> Ensuring shared PostgreSQL container is running on localhost:5432..."
   docker compose up -d postgres
 

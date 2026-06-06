@@ -16,6 +16,7 @@ import type {
   GroupedIssuesResponse,
   ListIssuesResponse,
   ListWebhookDeliveriesResponse,
+  LLMProvider,
   Squad,
   TimelineEntry,
   User,
@@ -258,6 +259,48 @@ export const SubscribersListSchema = z.array(SubscriberSchema);
 export const ChildIssuesResponseSchema = z.object({
   issues: z.array(IssueSchema).default([]),
 }).loose();
+
+// ---------------------------------------------------------------------------
+// LLM provider responses. Lenient by the same rules as the dashboard /
+// runtime schemas above: strings default to "" so a single missing field
+// fails only that row instead of dropping the whole listing, and `.loose()`
+// passes unknown fields through unchanged so a future server change
+// (e.g. exposing region / kind) does not white-screen the settings panel.
+// `has_api_key` defaults to false so a malformed listing still renders the
+// provider cards without spuriously masking a missing key as "present".
+// ---------------------------------------------------------------------------
+
+const LLMProviderSchema = z.object({
+  id: z.string().default(""),
+  workspace_id: z.string().default(""),
+  name: z.string().default(""),
+  base_url: z.string().default(""),
+  has_api_key: z.boolean().default(false),
+  model_name: z.string().default(""),
+  runtime_id: z.string().default(""),
+  created_by: z.string().default(""),
+  created_at: z.string().default(""),
+  updated_at: z.string().default(""),
+}).loose();
+
+export const LLMProviderListSchema = z.array(LLMProviderSchema);
+
+export const LLMProviderResponseSchema = LLMProviderSchema;
+
+export const EMPTY_LLM_PROVIDER_LIST: LLMProvider[] = [];
+
+export const EMPTY_LLM_PROVIDER: LLMProvider = {
+  id: "",
+  workspace_id: "",
+  name: "",
+  base_url: "",
+  has_api_key: false,
+  model_name: "",
+  runtime_id: "",
+  created_by: "",
+  created_at: "",
+  updated_at: "",
+};
 
 export const CloudRuntimeNodeSchema = z.object({
   id: z.string(),

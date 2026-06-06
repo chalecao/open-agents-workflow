@@ -198,6 +198,7 @@
     "runtime_offline_manual": "런타임 오프라인 - 직접 입력",
     "managed_by_runtime_title": "이 런타임에서 모델 선택을 관리합니다.",
     "managed_by_runtime_hint": "런타임 호스트에서 모델을 설정하세요. 예: Hermes는 자체 설정 파일에서 읽습니다.",
+    "llm_fixed_hint": "LLM 제공자에서 구성되었습니다. 모델을 변경하려면 제공자를 편집하세요.",
     "discovery_failed": "검색 실패",
     "clear_full": "선택 지우기(제공자 기본값 사용)"
   },

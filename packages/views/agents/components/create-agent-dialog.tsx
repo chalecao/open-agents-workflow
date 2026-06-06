@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Globe, Lock } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ModelDropdown } from "./model-dropdown";
 import { RuntimePicker, isRuntimeUsableForUser } from "./runtime-picker";
 import { InstructionsEditor } from "./instructions-editor";
@@ -10,6 +10,7 @@ import { SkillMultiSelect } from "./skill-multi-select";
 import { AvatarPicker } from "./avatar-picker";
 import { api } from "@multica/core/api";
 import { useWorkspaceId } from "@multica/core/hooks";
+import { llmProvidersOptions } from "@multica/core/llm-providers";
 import { workspaceKeys } from "@multica/core/workspace/queries";
 import type {
   Agent,
@@ -37,6 +38,14 @@ import {
 } from "@multica/core/agents";
 import { CharCounter } from "./char-counter";
 import { useT } from "../../i18n";
+
+// `openai-http` mirrors the provider value stamped on the auto-paired
+// runtime row in server/internal/handler/llm_provider.go. A runtimes
+// listing is the union of (real daemons) ∪ (LLM provider stubs), and we
+// cross-reference the LLM provider list to figure out which one is
+// which. Defined here rather than imported from server-side constants
+// because this is a UI-only filter — the wire shape is a plain string.
+const OPENAI_HTTP_PROVIDER = "openai-http";
 
 export function CreateAgentDialog({
   runtimes,
@@ -117,6 +126,44 @@ export function CreateAgentDialog({
   const selectedRuntimeLocked =
     selectedRuntime != null &&
     !isRuntimeUsableForUser(selectedRuntime, currentUserId);
+
+  // LLM provider cross-reference. Each LLM provider row in
+  // `llm_provider` is auto-paired with an `openai-http` runtime
+  // (server/internal/handler/llm_provider.go); the runtime picker
+  // already surfaces those runtimes, but the model picker needs the
+  // provider's `model_name` to render the read-only chip. We look it
+  // up by `runtime_id` so an arbitrary list order in either query
+  // doesn't matter — the pair is stable per-create.
+  const { data: llmProviders = [] } = useQuery({
+    ...llmProvidersOptions(wsId),
+    enabled: !!wsId,
+  });
+  const selectedLLMProvider =
+    selectedRuntime?.provider === OPENAI_HTTP_PROVIDER
+      ? llmProviders.find((p) => p.runtime_id === selectedRuntime.id) ?? null
+      : null;
+  const llmModel = selectedLLMProvider?.model_name ?? null;
+
+  // Auto-fill the agent's `model` column from the LLM provider's
+  // configured model when the user picks a paired runtime. We only
+  // overwrite a value the user has not manually customised — i.e. an
+  // empty string or a value that exactly matches the previous
+  // provider's model. A user-typed override is preserved so editing
+  // the LLM name in the form (rare) doesn't get clobbered by the
+  // selection change. The agent's model is purely cosmetic for
+  // `openai-http` runtimes (the worker reads provider.model_name
+  // directly), so this is display-only — but the user still expects
+  // the chip to match what the worker will actually invoke.
+  useEffect(() => {
+    if (llmModel) {
+      setModel((prev) => (prev === "" || prev === llmModel ? llmModel : prev));
+    } else if (selectedRuntime?.provider !== OPENAI_HTTP_PROVIDER) {
+      // Switching off an LLM-provider runtime should not silently
+      // clear a user-typed model on the next render — only the
+      // effect-driven auto-fill above ever writes to `model` for
+      // an LLM provider, so leaving the value alone here is safe.
+    }
+  }, [llmModel, selectedRuntime?.provider]);
 
   // Shared squad-join follow-up. Returns nothing — the caller has
   // already shown its create-success toast; we only need to surface a
@@ -340,6 +387,7 @@ export function CreateAgentDialog({
               value={model}
               onChange={setModel}
               disabled={!selectedRuntime}
+              llmModel={llmModel}
             />
 
             {/* --- Optional sections (instructions / skills) ---

@@ -347,6 +347,25 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	} else {
 		slog.Info("lark integration disabled (MULTICA_LARK_SECRET_KEY not set)")
 	}
+
+	// LLM provider integration. Same secretbox pattern as Lark, but
+	// with its own key (MULTICA_LLM_SECRET_KEY) so a self-host operator
+	// can rotate the LLM credentials without invalidating Lark
+	// app_secrets and vice versa. When the key is absent the LLM
+	// provider handlers return 503 and the server-side execution
+	// worker is disabled — self-host deployments that haven't
+	// configured a model provider are unaffected.
+	if llmKey, err := secretbox.LoadKey("MULTICA_LLM_SECRET_KEY"); err == nil {
+		box, err := secretbox.New(llmKey)
+		if err != nil {
+			slog.Error("llm: secretbox.New failed; llm provider integration disabled", "error", err)
+		} else {
+			h.LLMKeyBox = box
+			slog.Info("llm provider integration enabled")
+		}
+	} else {
+		slog.Info("llm provider integration disabled (MULTICA_LLM_SECRET_KEY not set)")
+	}
 	if opts.HeartbeatScheduler != nil {
 		h.HeartbeatScheduler = opts.HeartbeatScheduler
 	}
@@ -889,6 +908,26 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					// `runtime_has_active_agents` and the user confirmed the
 					// cascade plan.
 					r.Post("/archive-agents-and-delete", h.ArchiveAgentsAndDeleteRuntime)
+				})
+			})
+
+			// LLM providers. List + Get are member-visible (the agent
+			// picker needs to display the configured providers);
+			// Create / Update / Delete are admin-only because adding a
+			// provider effectively grants the workspace a new outbound
+			// HTTP channel that costs the operator money. Each provider
+			// auto-pairs with an `openai-http` runtime row that the
+			// agent picker then surfaces; deletes cascade.
+			r.Route("/api/llm-providers", func(r chi.Router) {
+				r.Get("/", h.ListLLMProviders)
+				r.Get("/{providerId}", h.GetLLMProvider)
+				r.Group(func(r chi.Router) {
+					r.Use(middleware.RequireWorkspaceRole(queries, "owner", "admin"))
+					r.Post("/", h.CreateLLMProvider)
+					r.Route("/{providerId}", func(r chi.Router) {
+						r.Patch("/", h.UpdateLLMProvider)
+						r.Delete("/", h.DeleteLLMProvider)
+					})
 				})
 			})
 

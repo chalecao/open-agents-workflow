@@ -1,11 +1,11 @@
 ---
 title: AI 编程工具对照
-description: Multica 支持 12 款 AI 编程工具；它们实现同一套接口，但能力细节差异很大。
+description: Multica 支持 13 款 AI 编程工具；它们实现同一套接口，但能力细节差异很大。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Multica 内置支持 **12 款 AI 编程工具**。它们都实现了同一套接口——排队、派发、执行、结果回传，所以你可以从 Multica 的同一个看板上指挥任意一款。**但它们在能力细节上差异很大**：会话恢复是否真用、是否支持 MCP、skill 文件该放在哪里、模型怎么选。这一页是完整对照。
+Multica 内置支持 **13 款 AI 编程工具**。它们都实现了同一套接口——排队、派发、执行、结果回传，所以你可以从 Multica 的同一个看板上指挥任意一款。**但它们在能力细节上差异很大**：会话恢复是否真用、是否支持 MCP、skill 文件该放在哪里、模型怎么选。这一页是完整对照。
 
 创建智能体时挑选工具的指引见 [创建和配置智能体](/agents-create)。
 
@@ -25,6 +25,7 @@ Multica 内置支持 **12 款 AI 编程工具**。它们都实现了同一套接
 | **OpenCode** | SST | ✅ | ✅ | `.opencode/skills/` | 动态发现 + variant |
 | **OpenClaw** | 开源项目 | ✅ | ✅ | `.agent_context/skills/` （fallback）| 绑定在智能体上，不能在任务里切换 |
 | **Pi** | Inflection AI | ✅（session 为文件路径）| ❌ | `.pi/skills/` | 动态发现 |
+| **Qoder CLI** | Qoder | ⚠️ 代码存在但尽力而为 | ❌ | `AGENTS.md` + 运行时 skill 目录 | 由 Qoder CLI 自己管理 |
 
 ## 每款工具的定位
 
@@ -76,6 +77,10 @@ SST 出品，开源。动态发现可用模型和模型 variant（扫 CLI 的配
 
 Inflection AI 出品，极简主义。**会话恢复机制特殊**——session ID 是磁盘上的文件路径（`~/.pi/...`），而不是字符串 ID。其他工具里，resume id 是 CLI 返回的字符串；Pi 里，resume id 就是会话文件本身。
 
+### Qoder CLI
+
+Qoder 出品。CLI 二进制名为 `qodercli`。以非交互 print 模式 + `--yolo` 启动——避免工具的逐次权限弹窗阻塞守护进程。**没有 `--model` flag**——模型选择保存在 Qoder CLI 自己的设置里（通过 `/config` slash 命令管理），因此 Multica 禁用了这款工具的模型选择控件。**会话恢复是尽力而为**——守护进程在拿到 session id 时会传 `-r <session-id>`，但 Qoder CLI 当前不在 stdout 暴露稳定的 session id，所以需要捕获 id 的链式回合只能用 `-c`/`--continue` 续。skill 从项目里的 `AGENTS.md` 加上运行时自带的 skill 目录发现。不集成 MCP。
+
 ## 会话恢复：谁真的支持
 
 会话恢复的机制在 [执行任务](/tasks#任务能接着上次的上下文继续吗) 里讲过。这里按工具列**精确现状**：
@@ -83,6 +88,7 @@ Inflection AI 出品，极简主义。**会话恢复机制特殊**——session 
 | 状态 | 工具 | 含义 |
 |---|---|---|
 | ✅ 真用 | Antigravity、Claude Code、Copilot、Hermes、Kimi、Kiro CLI、OpenCode、OpenClaw、Pi | 传 resume id，会从上次上下文接着继续 |
+| ⚠️ 代码存在但尽力而为 | Qoder CLI | 会把 `-r <id>` 透传，但 CLI 不暴露稳定 id；要链式回合用 `-c`/`--continue` |
 | ⚠️ 代码存在但不可达 | Codex、Cursor | 代码里有 resume 路径但实际走不到（Codex 静默回落、Cursor session id 不回传）—— **当作不支持** |
 | ❌ 无 | Gemini | CLI 无 resume 机制 |
 
@@ -90,7 +96,7 @@ Inflection AI 出品，极简主义。**会话恢复机制特殊**——session 
 
 ## MCP 配置：按工具不同
 
-**12 款工具里有 7 款实际消费 `mcp_config`：Claude Code、Codex、Hermes、Kimi、Kiro CLI、OpenCode、OpenClaw**。其他 5 款会接收这个字段但**忽略**——不报错、不警告，只是配置不生效。
+**13 款工具里有 7 款实际消费 `mcp_config`：Claude Code、Codex、Hermes、Kimi、Kiro CLI、OpenCode、OpenClaw**。其他 6 款会接收这个字段但**忽略**——不报错、不警告，只是配置不生效。
 
 各工具的接入方式不同：Claude Code 通过 `--mcp-config` 加 `--strict-mcp-config` 接收；Codex 会把 daemon 管理的 `mcp_servers` block 写入单次任务的 `$CODEX_HOME/config.toml`；Hermes、Kimi、Kiro CLI 通过 ACP `mcpServers` 接收；OpenCode 通过 `OPENCODE_CONFIG_CONTENT` 环境变量内联接收；OpenClaw 通过 Multica 的单次任务配置 wrapper 接收 `mcp.servers`。OpenCode 这条路径**不会**改写项目里的 `opencode.json`。
 
@@ -126,3 +132,4 @@ skill 的创建和使用详见 [技能](/skills)。
 - [创建和配置智能体](/agents-create) —— 给你的智能体挑一款工具
 - [执行任务](/tasks) —— 任务的生命周期和会话恢复机制
 - [守护进程与运行时](/daemon-runtimes) —— 工具跑在哪里、怎么连进 Multica
+- [安装智能体运行时](/install-agent-runtime) —— 13 款支持工具的安装与认证方式

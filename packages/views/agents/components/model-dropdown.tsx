@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, Cpu, Loader2, Plus, Check, Info } from "lucide-react";
+import { Brain, ChevronDown, Cpu, Loader2, Plus, Check, Info } from "lucide-react";
 import { runtimeModelsOptions } from "@multica/core/runtimes";
 import type { RuntimeModel } from "@multica/core/types";
 import {
@@ -19,28 +19,49 @@ import { useT } from "../../i18n";
 // daemon enumerates models on demand via heartbeat piggyback. Providers
 // that don't honour per-agent model selection at runtime (currently
 // antigravity — `agy` has no `--model` flag and reads selection from
-// its own settings) return supported=false, and the dropdown renders
-// disabled with an explanation instead of silently accepting a value
-// the backend would ignore.
+// its own settings, and qodercli — same situation) return
+// supported=false, and the dropdown renders disabled with an explanation
+// instead of silently accepting a value the backend would ignore.
+//
+// When the selected runtime is a workspace-configured LLM provider
+// (provider="openai-http"), the model is fixed at the provider level
+// (server/internal/llmexec reads `llm_provider.model_name` directly —
+// the agent's `model` column is never consulted by the LLM worker). The
+// caller passes the configured model via `llmModel` and the dropdown
+// renders a read-only chip that mirrors the picker's chrome but exposes
+// no editing surface, so the user can't accidentally type a value that
+// would be ignored.
 export function ModelDropdown({
   runtimeId,
   runtimeOnline,
   value,
   onChange,
   disabled,
+  llmModel,
 }: {
   runtimeId: string | null;
   runtimeOnline: boolean;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  /** When set, the runtime is backed by a workspace LLM provider and the
+   *  model is fixed at the provider level. The dropdown renders the
+   *  configured model as a read-only chip; the caller should pre-fill
+   *  `value` with this string and not expose editing. */
+  llmModel?: string | null;
 }) {
   const { t } = useT("agents");
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
+  const isLLMRuntime = !!llmModel;
   const modelsQuery = useQuery(
-    runtimeModelsOptions(runtimeOnline ? runtimeId : null),
+    // LLM-provider runtimes have no daemon to ask for a model catalog —
+    // the worker reads the configured model directly from the provider
+    // row. Skip the heartbeat round-trip entirely so the dropdown never
+    // paints an indeterminate "discovering" state for a runtime that
+    // has no discovery surface.
+    runtimeModelsOptions(isLLMRuntime || !runtimeOnline ? null : runtimeId),
   );
 
   const supported = modelsQuery.data?.supported ?? true;
@@ -95,6 +116,33 @@ export function ModelDropdown({
       : runtimeOnline
         ? t(($) => $.model_dropdown.default_provider)
         : t(($) => $.model_dropdown.runtime_offline_manual));
+
+  if (isLLMRuntime) {
+    // LLM-provider runtime: model is fixed at the provider level. Show
+    // a read-only chip that mirrors the picker's visual language (label
+    // row, bordered container, model name) so the field reads as "the
+    // model for this agent is X" without inviting an edit. The agent's
+    // `model` column is populated by the parent dialog for downstream
+    // display, but the LLM worker never reads it.
+    return (
+      <div className="flex flex-col min-w-0">
+        <div className="flex h-6 items-center">
+          <Label className="text-xs text-muted-foreground">{t(($) => $.model_dropdown.label)}</Label>
+        </div>
+        <div className="mt-1.5 flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-sm">
+          <Brain className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="truncate font-medium">{llmModel}</span>
+            </div>
+            <div className="truncate text-xs text-muted-foreground">
+              {t(($) => $.model_dropdown.llm_fixed_hint)}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!supported && !modelsQuery.isLoading) {
     return (

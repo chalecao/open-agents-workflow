@@ -1,0 +1,277 @@
+package llmexec
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/multica-ai/multica/server/internal/util/secretbox"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
+)
+
+// openaiHTTPProvider is duplicated from internal/handler to avoid an
+// import cycle (handler imports llmexec through Worker in production
+// wiring). Keep the value in sync with
+// internal/handler.openaiHTTPProvider.
+const openaiHTTPProvider = "openai-http"
+
+// TaskCompleter is the subset of service.TaskService the worker
+// needs to report a finished task. Defined as an interface so tests
+// can stub it without spinning up the full TaskService.
+type TaskCompleter interface {
+	CompleteTask(ctx context.Context, taskID pgtype.UUID, result []byte, sessionID, workDir string) (*db.AgentTaskQueue, error)
+	FailTask(ctx context.Context, taskID pgtype.UUID, errMsg, sessionID, workDir, failureReason string) (*db.AgentTaskQueue, error)
+}
+
+// TaskClaimer is the subset of service.TaskService the worker needs
+// to pull a task. The runtimeID is the openai-http runtime the LLM
+// provider is bound to; ClaimTaskForRuntime returns nil when no task
+// is pending, which the worker treats as "sleep, nothing to do".
+//
+// Splitting this from TaskCompleter (rather than merging both into
+// one TaskServiceClient interface) lets callers wire a stub completer
+// in tests that can drive ExecuteTask without standing up a claimer.
+type TaskClaimer interface {
+	ClaimTaskForRuntime(ctx context.Context, runtimeID pgtype.UUID) (*db.AgentTaskQueue, error)
+}
+
+// DBTX is the minimal DB surface the worker uses. *db.Queries
+// implements it; pgxpool.Pool also implements it via DBTX so tests
+// can pass an in-process pool directly.
+type DBTX interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	Exec(ctx context.Context, sql string, args ...any) (sql.Result, error)
+}
+
+// Worker polls openai-http runtimes for queued tasks and executes
+// them against the configured LLM endpoint. One Worker per process
+// is enough — it picks runtimes up dynamically so a single instance
+// services every workspace's LLM providers.
+type Worker struct {
+	queries  *db.Queries
+	box      *secretbox.Box
+	completer TaskCompleter
+	claimer  TaskClaimer
+	client   *OpenAIClient
+	logger   *slog.Logger
+	// PollInterval is the wait between two poll cycles when no task
+	// is pending. Defaults to 5s. Set lower in tests to drive the
+	// loop deterministically.
+	PollInterval time.Duration
+	// PerTaskTimeout caps a single upstream LLM call. Defaults to
+	// 2 minutes. The task itself retains its own deadline; this is
+	// the LLM call's per-attempt budget.
+	PerTaskTimeout time.Duration
+}
+
+// NewWorker returns a worker. A nil box is permitted: in that case
+// Run becomes a no-op and ExecuteOnce returns ErrDisabled. This lets
+// the router wire a Worker unconditionally without a feature-flag
+// branch at the call site.
+//
+// The supplied claimer and completer are normally the same
+// *service.TaskService — the production wiring in cmd/server passes
+// it twice. Splitting the interfaces in the constructor lets tests
+// inject just one of them.
+func NewWorker(queries *db.Queries, box *secretbox.Box, claimer TaskClaimer, completer TaskCompleter, logger *slog.Logger) *Worker {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &Worker{
+		queries:        queries,
+		box:            box,
+		claimer:        claimer,
+		completer:      completer,
+		client:         NewOpenAIClient(),
+		logger:         logger,
+		PollInterval:   5 * time.Second,
+		PerTaskTimeout: 2 * time.Minute,
+	}
+}
+
+// Enabled reports whether the worker has a usable secretbox. A
+// caller can check this before spawning the Run loop to avoid
+// noisy "feature off" log lines.
+func (w *Worker) Enabled() bool {
+	return w != nil && w.box != nil
+}
+
+// Run drives the worker until ctx is cancelled. Each cycle:
+//  1. List every online openai-http runtime in the workspace
+//     (we don't have a per-workspace worker — one global worker).
+//  2. For each runtime, call ClaimTaskForRuntime.
+//  3. If a task is claimed, call ExecuteTask and let it report back
+//     via completer.
+//  4. Sleep PollInterval between cycles (also clamped by ctx).
+func (w *Worker) Run(ctx context.Context) error {
+	if !w.Enabled() {
+		return ErrDisabled
+	}
+	w.logger.Info("llmexec worker starting")
+	defer w.logger.Info("llmexec worker stopped")
+	t := time.NewTicker(w.PollInterval)
+	defer t.Stop()
+	for {
+		// Drain immediately on entry so a process restart that
+		// happened mid-cycle does not have to wait a full
+		// PollInterval before picking up the first task.
+		if err := w.ExecuteOnce(ctx); err != nil && !errors.Is(err, ErrDisabled) {
+			w.logger.Warn("llmexec cycle failed", "error", err)
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-t.C:
+		}
+	}
+}
+
+// ExecuteOnce runs a single poll cycle. Returns ErrDisabled when
+// the worker is not configured. Any other non-nil error is a
+// transient failure that the next cycle will retry; the worker
+// does not bail on a single bad cycle.
+func (w *Worker) ExecuteOnce(ctx context.Context) error {
+	if !w.Enabled() {
+		return ErrDisabled
+	}
+	runtimes, err := w.listOpenaiHTTPRuntimes(ctx)
+	if err != nil {
+		return fmt.Errorf("list openai-http runtimes: %w", err)
+	}
+	if len(runtimes) == 0 {
+		return nil
+	}
+	for _, rt := range runtimes {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		// Only claim from runtimes that are still online. A
+		// runtime that has been flipped to offline (e.g. the
+		// workspace disabled the provider) must not pull more
+		// work.
+		if rt.Status != "online" {
+			continue
+		}
+		task, err := w.claimer.ClaimTaskForRuntime(ctx, rt.ID)
+		if err != nil {
+			w.logger.Warn("llmexec claim failed",
+				"runtime_id", uuidString(rt.ID),
+				"error", err)
+			continue
+		}
+		if task == nil {
+			continue
+		}
+		w.executeTask(ctx, rt, task)
+	}
+	return nil
+}
+
+// executeTask builds the prompt, makes the upstream call, and
+// reports the result. Errors are funnelled to completer.FailTask
+// so the task never silently hangs in `running`.
+func (w *Worker) executeTask(ctx context.Context, rt db.AgentRuntime, task *db.AgentTaskQueue) {
+	provider, err := w.queries.GetLLMProviderByRuntime(ctx, rt.ID)
+	if err != nil {
+		w.failTask(ctx, task.ID, "llm provider not found for runtime", "config_error", err)
+		return
+	}
+	apiKey := ""
+	if len(provider.ApiKeyEncrypted) > 0 {
+		plain, err := w.box.Open(provider.ApiKeyEncrypted)
+		if err != nil {
+			w.failTask(ctx, task.ID, "llm api key could not be decrypted", "config_error", err)
+			return
+		}
+		apiKey = string(plain)
+	}
+	agent, err := w.queries.GetAgent(ctx, task.AgentID)
+	if err != nil {
+		w.failTask(ctx, task.ID, "agent not found", "config_error", err)
+		return
+	}
+	systemPrompt, userPrompt, err := buildPrompts(ctx, w.queries, agent, task)
+	if err != nil {
+		w.failTask(ctx, task.ID, "could not build prompt", "config_error", err)
+		return
+	}
+	callCtx, cancel := context.WithTimeout(ctx, w.PerTaskTimeout)
+	defer cancel()
+	output, err := w.client.Do(callCtx, provider.BaseUrl, provider.ModelName, apiKey, systemPrompt, userPrompt)
+	if err != nil {
+		var upErr *ErrUpstream
+		if errors.As(err, &upErr) {
+			w.failTask(ctx, task.ID, fmt.Sprintf("llm call failed: %s", upErr.Error()), "upstream_error", err)
+			return
+		}
+		w.failTask(ctx, task.ID, "llm call failed", "upstream_error", err)
+		return
+	}
+	// Wrap the LLM output in a tiny envelope so the consumer of the
+	// task result can distinguish a successful LLM call from a
+	// claimed-but-empty output. The daemon writes its result as a
+	// markdown blob; the result chat sees a `{ "output": "..." }`
+	// envelope with the LLM's text. Follow-up work could surface
+	// usage here.
+	result := map[string]any{
+		"output":      output,
+		"provider_id": uuidString(provider.ID),
+		"model":       provider.ModelName,
+		"runtime":     "openai-http",
+	}
+	payload, err := json.Marshal(result)
+	if err != nil {
+		w.failTask(ctx, task.ID, "result marshal failed", "internal_error", err)
+		return
+	}
+	if _, err := w.completer.CompleteTask(ctx, task.ID, payload, "", ""); err != nil {
+		w.logger.Warn("llmexec complete failed", "task_id", uuidString(task.ID), "error", err)
+	}
+}
+
+func (w *Worker) failTask(ctx context.Context, taskID pgtype.UUID, msg, reason string, cause error) {
+	w.logger.Warn("llmexec failing task",
+		"task_id", uuidString(taskID),
+		"reason", reason,
+		"error", cause,
+	)
+	if _, err := w.completer.FailTask(ctx, taskID, msg, "", "", reason); err != nil {
+		w.logger.Warn("llmexec fail-task call failed",
+			"task_id", uuidString(taskID),
+			"error", err,
+		)
+	}
+}
+
+// listOpenaiHTTPRuntimes returns every online openai-http runtime.
+// The query is hand-written (not via sqlc) because the slice
+// returned is consumed inline and the schema is a join we don't
+// have a generated type for.
+func (w *Worker) listOpenaiHTTPRuntimes(ctx context.Context) ([]db.AgentRuntime, error) {
+	return w.queries.ListOnlineRuntimesByProvider(ctx, openaiHTTPProvider)
+}
+
+func uuidString(u pgtype.UUID) string {
+	if !u.Valid {
+		return ""
+	}
+	out := make([]byte, 36)
+	const hex = "0123456789abcdef"
+	for i, b := range u.Bytes {
+		switch i {
+		case 4, 6, 8, 10:
+			out[i*2+i/2-1] = '-'
+		}
+		out[i*2+i/2] = hex[b>>4]
+		out[i*2+i/2+1] = hex[b&0x0f]
+	}
+	return string(out)
+}

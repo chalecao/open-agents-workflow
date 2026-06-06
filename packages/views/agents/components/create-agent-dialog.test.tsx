@@ -2,7 +2,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import type { Agent, MemberWithUser, RuntimeDevice } from "@multica/core/types";
 import { I18nProvider } from "@multica/core/i18n/react";
 import { WorkspaceSlugProvider } from "@multica/core/paths";
@@ -28,7 +28,24 @@ vi.mock("@multica/core/hooks", () => ({
 // ModelDropdown talks to the api; the create dialog only needs it as a
 // stand-in here, so swap it out.
 vi.mock("./model-dropdown", () => ({
-  ModelDropdown: () => null,
+  // Capture the props so a test can assert what the dialog hands the
+  // dropdown (notably the `llmModel` prop that signals an LLM-provider
+  // runtime is selected). The dialog passes `value` through, so the
+  // chip's effective model name is observable from a test.
+  ModelDropdown: ({ value, llmModel }: { value: string; llmModel?: string | null }) => {
+    const container = (globalThis as { __modelDropdownProps?: { value: string; llmModel: string | null } })
+      .__modelDropdownProps;
+    if (container) {
+      container.value = value;
+      container.llmModel = llmModel ?? null;
+    }
+    return (
+      <div data-testid="model-dropdown">
+        <span data-testid="model-value">{value}</span>
+        <span data-testid="llm-model">{llmModel ?? ""}</span>
+      </div>
+    );
+  },
 }));
 
 // Provider logos don't matter for these assertions but they pull in SVGs.
@@ -43,6 +60,20 @@ vi.mock("../../common/actor-avatar", () => ({
 
 vi.mock("sonner", () => ({
   toast: { error: vi.fn(), success: vi.fn() },
+}));
+
+// The mock factory reads the LLM-provider list at call time from
+// `globalThis.__llmProviderStub` so individual tests can swap in a
+// non-empty fixture without re-mocking. Matches the shape
+// `LLMProviderListSchema` parses.
+vi.mock("@multica/core/api", () => ({
+  api: {
+    listLLMProviders: () =>
+      Promise.resolve(
+        ((globalThis as { __llmProviderStub?: Array<Record<string, unknown>> })
+          .__llmProviderStub) ?? [],
+      ),
+  },
 }));
 
 import { CreateAgentDialog } from "./create-agent-dialog";
@@ -283,5 +314,116 @@ describe("CreateAgentDialog runtime visibility gate", () => {
       .find((b) => b.textContent === "Create");
     expect(createBtn).toBeDefined();
     expect((createBtn as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("CreateAgentDialog LLM-provider runtime", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Reset the LLM-provider stub between tests. The mock closure reads
+    // from `globalThis.__llmProviderStub` so any leftover from a
+    // previous test would leak in via React Query's shared cache.
+    (globalThis as { __llmProviderStub?: Array<Record<string, unknown>> })
+      .__llmProviderStub = [];
+  });
+  afterEach(() => {
+    cleanup();
+    document.body.innerHTML = "";
+    (globalThis as { __llmProviderStub?: Array<Record<string, unknown>> })
+      .__llmProviderStub = [];
+  });
+
+  it("auto-fills the model from the LLM provider when an openai-http runtime is selected", async () => {
+    // Set up the LLM provider list returned by the mocked `api.listLLMProviders`.
+    // The provider is paired with an `openai-http` runtime; the create
+    // dialog must surface `model_name` as the dropdown's read-only chip.
+    (globalThis as { __llmProviderStub?: Array<Record<string, unknown>> })
+      .__llmProviderStub = [
+      {
+        id: "lp-1",
+        workspace_id: "ws-1",
+        name: "OpenAI Cloud",
+        base_url: "https://api.openai.com/v1",
+        has_api_key: true,
+        model_name: "gpt-4o",
+        runtime_id: "rt-llm",
+        created_by: ME,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      },
+    ];
+    const mine = makeRuntime({
+      id: "rt-llm",
+      name: "OpenAI Cloud",
+      provider: "openai-http",
+      runtime_mode: "cloud",
+      owner_id: ME,
+    });
+    renderDialog([mine]);
+
+    // The dialog's useEffect that auto-fills the model runs only after
+    // the React Query for LLM providers resolves. Wait for the
+    // dropdown to reflect the LLM's `model_name` rather than racing
+    // the microtask queue with a fixed sleep.
+    await waitFor(() =>
+      expect(screen.getByTestId("llm-model").textContent).toBe("gpt-4o"),
+    );
+    expect(screen.getByTestId("model-value").textContent).toBe("gpt-4o");
+  });
+
+  it("does not auto-fill the model when no openai-http runtime is selected", async () => {
+    // No LLM provider rows. The dropdown should receive an empty
+    // `llmModel` prop and the `value` should stay empty.
+    (globalThis as { __llmProviderStub?: Array<Record<string, unknown>> })
+      .__llmProviderStub = [];
+    const mine = makeRuntime({
+      id: "rt-claude",
+      name: "Claude Local",
+      provider: "claude",
+    });
+    renderDialog([mine]);
+
+    // Wait for the LLM-providers query to settle (empty list) so the
+    // useEffect's first render — which runs with `llmModel=null` and
+    // a non-LLM runtime — has had a chance to commit.
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(screen.getByTestId("llm-model").textContent).toBe("");
+    expect(screen.getByTestId("model-value").textContent).toBe("");
+  });
+
+  it("does not auto-fill when the selected openai-http runtime has no matching provider", async () => {
+    // Edge case: the runtimes list mentions an openai-http row that
+    // doesn't appear in the LLM providers list (e.g. the provider was
+    // deleted but the runtime row hasn't been GC'd). The dialog must
+    // not crash and must not show a stale `model_name`.
+    (globalThis as { __llmProviderStub?: Array<Record<string, unknown>> })
+      .__llmProviderStub = [
+      {
+        id: "lp-other",
+        workspace_id: "ws-1",
+        name: "Local Ollama",
+        base_url: "http://localhost:11434/v1",
+        has_api_key: false,
+        model_name: "llama3.1",
+        runtime_id: "rt-some-other",
+        created_by: ME,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      },
+    ];
+    const orphanRuntime = makeRuntime({
+      id: "rt-orphan",
+      name: "Orphan Provider",
+      provider: "openai-http",
+      runtime_mode: "cloud",
+      owner_id: ME,
+    });
+    renderDialog([orphanRuntime]);
+
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(screen.getByTestId("llm-model").textContent).toBe("");
+    expect(screen.getByTestId("model-value").textContent).toBe("");
   });
 });

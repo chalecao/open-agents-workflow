@@ -25,7 +25,12 @@
     "lint": "turbo lint --filter=!@multica/mobile",
     "clean": "turbo clean && rm -rf node_modules",
     "ui:add": "cd packages/ui && npx shadcn@latest add",
-    "generate:reserved-slugs": "node scripts/generate-reserved-slugs.mjs"
+    "generate:reserved-slugs": "node scripts/generate-reserved-slugs.mjs",
+    "build:daemon": "make build",
+    "daemon:login": "./server/multica setup self-host",
+    "daemon:start": "./server/multica daemon restart",
+    "server": "make server",
+    "login": "pnpm -C apps/mobile login:web"
   },
   "packageManager": "pnpm@10.28.2",
   "pnpm": {

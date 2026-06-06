@@ -20,9 +20,10 @@ import { useT } from "../../../i18n";
  * the inspector only renders this picker after a runtime is bound.
  *
  * Unsupported providers (e.g. antigravity, whose `agy` CLI has no
- * `--model` flag and reads model selection from its own settings) render
- * an inert italic "Managed by runtime" label instead of a clickable
- * picker — the back-end ignores agent.model for those runtimes anyway.
+ * `--model` flag and reads model selection from its own settings, and
+ * qodercli, which has the same gap) render an inert italic "Managed
+ * by runtime" label instead of a clickable picker — the back-end
+ * ignores agent.model for those runtimes anyway.
  */
 export function ModelPicker({
   runtimeId,

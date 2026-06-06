@@ -198,6 +198,7 @@
     "runtime_offline_manual": "Runtime offline — enter manually",
     "managed_by_runtime_title": "Model selection is managed by this runtime.",
     "managed_by_runtime_hint": "Configure the model on the runtime host (e.g. Hermes reads it from its own config file).",
+    "llm_fixed_hint": "Configured on the LLM provider. Edit the provider to change the model.",
     "discovery_failed": "discovery failed",
     "clear_full": "Clear selection (use provider default)"
   },

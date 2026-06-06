@@ -27,6 +27,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/storage"
 	"github.com/multica-ai/multica/server/internal/util"
+	"github.com/multica-ai/multica/server/internal/util/secretbox"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -155,7 +156,16 @@ type Handler struct {
 	// process exit indefinitely if the pool is frozen — at worst the
 	// next replica waits the full TTL.
 	LarkHub *lark.Hub
-	cfg     Config
+	// LLMKeyBox seals and opens the per-provider API key stored in
+	// llm_provider.api_key_encrypted. It is a separate secretbox
+	// from the Lark one so operators can rotate LLM credentials
+	// without invalidating Lark app_secrets and vice versa. Nil when
+	// MULTICA_LLM_SECRET_KEY is unset — in that case the LLM
+	// provider handlers return 503 and the server-side LLM execution
+	// worker is disabled (server/internal/llmexec treats nil as
+	// "feature off"). The router wires this after handler.New.
+	LLMKeyBox *secretbox.Box
+	cfg       Config
 }
 
 func New(queries *db.Queries, txStarter txStarter, hub *realtime.Hub, bus *events.Bus, emailService *service.EmailService, store storage.Storage, cfSigner *auth.CloudFrontSigner, analyticsClient analytics.Client, cfg Config, daemonHubs ...*daemonws.Hub) *Handler {

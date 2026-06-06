@@ -104,6 +104,9 @@ import type {
   BeginLarkInstallResponse,
   LarkInstallStatusResponse,
   RedeemLarkBindingTokenResponse,
+  LLMProvider,
+  CreateLLMProviderRequest,
+  UpdateLLMProviderRequest,
   Squad,
   SquadMember,
   SquadMemberStatusListResponse,
@@ -188,6 +191,10 @@ import {
   EMPTY_CREATE_BILLING_CHECKOUT_SESSION_RESPONSE,
   EMPTY_BILLING_CHECKOUT_SESSION_STATUS,
   EMPTY_CREATE_BILLING_PORTAL_SESSION_RESPONSE,
+  LLMProviderListSchema,
+  LLMProviderResponseSchema,
+  EMPTY_LLM_PROVIDER_LIST,
+  EMPTY_LLM_PROVIDER,
 } from "./schemas";
 
 /** Identifies the calling client to the server.
@@ -2099,5 +2106,74 @@ export class ApiClient {
       method: "POST",
       body: JSON.stringify({ token }),
     });
+  }
+
+  // ---------------------------------------------------------------------
+  // LLM provider CRUD — workspace-scoped OpenAI-compatible endpoints
+  // (cloud or local) the server-side execution worker calls when an
+  // agent bound to the auto-paired `openai-http` runtime fires a task.
+  // Reads are member-visible (the agent picker needs to see the
+  // providers); writes are admin-only (enforced by the server; the
+  // settings UI also gates them). The list / detail responses are
+  // parsed with a lenient schema so a server contract drift degrades
+  // to the empty fallback rather than white-screening the panel.
+  // ---------------------------------------------------------------------
+
+  async listLLMProviders(): Promise<LLMProvider[]> {
+    const raw = await this.fetch<unknown>("/api/llm-providers/");
+    return parseWithFallback(raw, LLMProviderListSchema, EMPTY_LLM_PROVIDER_LIST, {
+      endpoint: "GET /api/llm-providers/",
+    });
+  }
+
+  async getLLMProvider(providerId: string): Promise<LLMProvider> {
+    const raw = await this.fetch<unknown>(
+      `/api/llm-providers/${encodeURIComponent(providerId)}`,
+    );
+    return parseWithFallback(
+      raw,
+      LLMProviderResponseSchema,
+      { ...EMPTY_LLM_PROVIDER, id: providerId },
+      { endpoint: "GET /api/llm-providers/:id" },
+    );
+  }
+
+  async createLLMProvider(data: CreateLLMProviderRequest): Promise<LLMProvider> {
+    const raw = await this.fetch<unknown>("/api/llm-providers/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(
+      raw,
+      LLMProviderResponseSchema,
+      EMPTY_LLM_PROVIDER,
+      { endpoint: "POST /api/llm-providers/" },
+    );
+  }
+
+  async updateLLMProvider(
+    providerId: string,
+    data: UpdateLLMProviderRequest,
+  ): Promise<LLMProvider> {
+    const raw = await this.fetch<unknown>(
+      `/api/llm-providers/${encodeURIComponent(providerId)}/`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      },
+    );
+    return parseWithFallback(
+      raw,
+      LLMProviderResponseSchema,
+      { ...EMPTY_LLM_PROVIDER, id: providerId },
+      { endpoint: "PATCH /api/llm-providers/:id" },
+    );
+  }
+
+  async deleteLLMProvider(providerId: string): Promise<void> {
+    await this.fetch(
+      `/api/llm-providers/${encodeURIComponent(providerId)}/`,
+      { method: "DELETE" },
+    );
   }
 }

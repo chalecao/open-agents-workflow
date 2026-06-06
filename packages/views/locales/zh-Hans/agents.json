@@ -193,6 +193,7 @@
     "runtime_offline_manual": "运行时离线 —— 请手动输入",
     "managed_by_runtime_title": "模型选择由该运行时管理。",
     "managed_by_runtime_hint": "请在运行时主机上配置模型（例如 Hermes 会从自身配置文件读取）。",
+    "llm_fixed_hint": "已在 LLM 提供方配置。请编辑提供方以更改模型。",
     "discovery_failed": "发现失败",
     "clear_full": "清除选择（使用提供方默认）"
   },

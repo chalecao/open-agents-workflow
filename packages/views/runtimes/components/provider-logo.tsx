@@ -192,6 +192,28 @@ function KiroLogo({ className }: { className: string }) {
   );
 }
 
+// Qoder CLI — placeholder mark. The Qoder team has not published a
+// public SVG logo at the time of this change (docs.qoder.com only
+// serves raster assets), so we render a stylised "Q" in the brand's
+// teal-green (`#0FAE93`) on a rounded square. Matches the visual
+// language of Kimi / Pi's monochrome inline marks — no external asset,
+// no PNG import path. Swap for the official mark when Qoder ships one.
+function QodercliLogo({ className }: { className: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <rect width="24" height="24" rx="5" fill="#0FAE93" />
+      <path
+        d="M12 5.5a6.5 6.5 0 1 0 5.97 9.13l-2.2-1.27a3.5 3.5 0 1 1 .6-2.36h3a6.5 6.5 0 0 0-7.37-5.5Z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="M15.5 14.5l3 3-1.4 1.4-3-3a5.7 5.7 0 0 0 1.4-1.4Z"
+        fill="#FFFFFF"
+      />
+    </svg>
+  );
+}
+
 export function ProviderLogo({
   provider,
   className = "h-4 w-4",
@@ -224,6 +246,8 @@ export function ProviderLogo({
       return <GeminiLogo className={className} />;
     case "antigravity":
       return <AntigravityLogo className={className} />;
+    case "qodercli":
+      return <QodercliLogo className={className} />;
     default:
       return <Monitor className={className} />;
   }

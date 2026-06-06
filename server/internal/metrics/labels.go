@@ -125,6 +125,7 @@ var (
 		"openclaw":      "openclaw",
 		"opencode":      "opencode",
 		"pi":            "pi",
+		"qodercli":      "qodercli",
 		"other":         "other",
 	}
 	knownTerminalStatuses = map[string]string{

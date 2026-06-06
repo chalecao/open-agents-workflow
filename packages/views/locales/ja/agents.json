@@ -180,11 +180,12 @@
   },
   "model_dropdown": {
     "label": "モデル",
-    "select_runtime_first": "先にランタイムを選択してください",
+    "select_runtime_first": "まずランタイムを選択してください",
     "default_provider": "デフォルト（プロバイダー）",
     "runtime_offline_manual": "ランタイムがオフライン — 手動で入力",
     "managed_by_runtime_title": "このランタイムがモデル選択を管理します。",
     "managed_by_runtime_hint": "ランタイムホストでモデルを設定してください（例: Hermes は自身の設定ファイルから読み込みます）。",
+    "llm_fixed_hint": "LLM プロバイダーで設定済み。モデルを変更するにはプロバイダーを編集してください。",
     "discovery_failed": "検出に失敗しました",
     "clear_full": "選択をクリア（プロバイダーのデフォルトを使用）"
   },

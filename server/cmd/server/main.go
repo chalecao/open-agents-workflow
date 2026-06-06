@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/daemonws"
 	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/handler"
+	"github.com/multica-ai/multica/server/internal/llmexec"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/realtime"
@@ -359,6 +361,22 @@ func main() {
 	// workers, AFTER the HTTP server has drained.
 	if h.LarkHub != nil {
 		go h.LarkHub.Run(sweepCtx)
+	}
+
+	// LLM execution worker. Polls openai-http runtimes for queued
+	// tasks and dispatches them to the user-configured LLM endpoint
+	// (Ollama, vLLM, OpenAI-compatible clouds, …). Nil when
+	// MULTICA_LLM_SECRET_KEY is unset, in which case the worker
+	// becomes a no-op and we skip the goroutine entirely. Bound to
+	// sweepCtx so it winds down alongside the other long-running
+	// workers after the HTTP server has drained.
+	llmWorker := llmexec.NewWorker(queries, h.LLMKeyBox, taskSvc, taskSvc, slog.Default())
+	if llmWorker.Enabled() {
+		go func() {
+			if err := llmWorker.Run(sweepCtx); err != nil && !errors.Is(err, context.Canceled) {
+				slog.Warn("llmexec worker exited with error", "error", err)
+			}
+		}()
 	}
 
 	// MUL-2957: DB-backed execution scheduler. The scheduler turns the

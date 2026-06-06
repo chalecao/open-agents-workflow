@@ -50,6 +50,17 @@ func TestNewReturnsAntigravityBackend(t *testing.T) {
 	}
 }
 
+func TestNewReturnsQodercliBackend(t *testing.T) {
+	t.Parallel()
+	b, err := New("qodercli", Config{ExecutablePath: "/nonexistent/qodercli"})
+	if err != nil {
+		t.Fatalf("New(qodercli) error: %v", err)
+	}
+	if _, ok := b.(*qodercliBackend); !ok {
+		t.Fatalf("expected *qodercliBackend, got %T", b)
+	}
+}
+
 func TestNewRejectsUnknownType(t *testing.T) {
 	t.Parallel()
 	_, err := New("gpt", Config{})
@@ -84,7 +95,7 @@ func TestLaunchHeaderCoversAllSupportedBackends(t *testing.T) {
 	// entry to launchHeaders in agent.go and extend this list.
 	supported := []string{
 		"antigravity", "claude", "codex", "copilot", "cursor", "gemini",
-		"hermes", "kimi", "kiro", "openclaw", "opencode", "pi",
+		"hermes", "kimi", "kiro", "openclaw", "opencode", "pi", "qodercli",
 	}
 	for _, t_ := range supported {
 		if header := LaunchHeader(t_); header == "" {

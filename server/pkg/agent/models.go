@@ -109,6 +109,14 @@ func ListModels(ctx context.Context, providerType, executablePath string) ([]Mod
 		// an empty catalog so the daemon's model_list endpoint succeeds
 		// without populating a misleading dropdown.
 		return []Model{}, nil
+	case "qodercli":
+		// Qoder CLI does not expose a `--model` flag today; model
+		// selection lives in the user's local Qoder settings (the
+		// `/config` slash command) and is communicated to the backend
+		// internally by the CLI. Return an empty catalog so the daemon's
+		// model_list endpoint succeeds without populating a misleading
+		// dropdown — same shape as antigravity above.
+		return []Model{}, nil
 	case "cursor":
 		return cachedDiscovery(providerType, func() ([]Model, error) {
 			return discoverCursorModels(ctx, executablePath)
@@ -152,13 +160,14 @@ func ListModels(ctx context.Context, providerType, executablePath string) ([]Mod
 // before each prompt, Claude / Codex / Cursor / Gemini / Copilot / Kimi /
 // Kiro / OpenCode / OpenClaw / Pi pass it via flag or session config.
 //
-// Antigravity is the lone exception: `agy` has no `--model` flag today,
-// and the backend in antigravity.go deliberately drops opts.Model on the
-// floor. Returning false here makes the UI render a disabled
-// "Managed by runtime" picker instead of an empty dropdown plus a
-// silently-ignored manual-entry field.
+// Antigravity and Qoder CLI are the exceptions: neither exposes a
+// `--model` flag today, and the backends in antigravity.go / qodercli.go
+// deliberately drop opts.Model on the floor. Returning false here makes
+// the UI render a disabled "Managed by runtime" picker instead of an
+// empty dropdown plus a silently-ignored manual-entry field.
 func ModelSelectionSupported(providerType string) bool {
-	if providerType == "antigravity" {
+	switch providerType {
+	case "antigravity", "qodercli":
 		return false
 	}
 	return true
