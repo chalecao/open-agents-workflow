@@ -123,3 +123,61 @@ func asErr(err error, target **ErrUpstream) bool {
 	}
 	return false
 }
+
+func TestOpenAIClient_Ping_Success(t *testing.T) {
+	var gotPath, gotAuth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotAuth = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"object":"list","data":[]}`))
+	}))
+	defer srv.Close()
+
+	c := NewOpenAIClient()
+	if err := c.Ping(context.Background(), srv.URL, "secret-key"); err != nil {
+		t.Fatalf("Ping: %v", err)
+	}
+	if gotPath != "/models" {
+		t.Fatalf("path: got %q, want /models", gotPath)
+	}
+	if gotAuth != "Bearer secret-key" {
+		t.Fatalf("auth header: got %q, want Bearer secret-key", gotAuth)
+	}
+}
+
+func TestOpenAIClient_Ping_StripsTrailingSlash(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	c := NewOpenAIClient()
+	if err := c.Ping(context.Background(), srv.URL+"/", ""); err != nil {
+		t.Fatalf("Ping: %v", err)
+	}
+	if gotPath != "/models" {
+		t.Fatalf("path: got %q, want /models (no double slash)", gotPath)
+	}
+}
+
+func TestOpenAIClient_Ping_Non2xx(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"error":"unauthorized"}`))
+	}))
+	defer srv.Close()
+	c := NewOpenAIClient()
+	err := c.Ping(context.Background(), srv.URL, "")
+	if err == nil {
+		t.Fatalf("expected error on 401")
+	}
+	var upErr *ErrUpstream
+	if !asErr(err, &upErr) {
+		t.Fatalf("expected *ErrUpstream, got %T", err)
+	}
+	if upErr.StatusCode != 401 {
+		t.Fatalf("status: got %d, want 401", upErr.StatusCode)
+	}
+}

@@ -128,6 +128,6 @@ func buildPrompts(
 }
 
 // _ is a guard for an import-only ref so the linter doesn't drop
-// pgtype. The runtime IDs in this file are pgtype.UUID; the
-// uuidString helper above is the only place we serialize them.
+// pgtype. The runtime IDs in this file are pgtype.UUID; we serialize
+// them via util.UUIDToString.
 var _ = pgtype.UUID{}

@@ -93,6 +93,47 @@ func NewOpenAIClient() *OpenAIClient {
 	}
 }
 
+// Ping issues a lightweight GET to {baseURL}/models to verify that
+// the OpenAI-compatible endpoint is reachable. Returns nil on any
+// 2xx; non-2xx and network errors are surfaced verbatim. Used by the
+// worker keep-alive pass (server/internal/llmexec.worker) to bump
+// the runtime's last_seen_at and to flip a previously-offline
+// runtime back to online once the URL is reachable again.
+//
+// 8 MiB cap on the response body mirrors Do: the /models response
+// from a busy local Ollama/LM Studio instance can be sizable.
+func (c *OpenAIClient) Ping(ctx context.Context, baseURL, apiKey string) error {
+	url := strings.TrimRight(baseURL, "/") + "/models"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("llmexec: build ping: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	if apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	}
+	for k, vs := range c.ExtraHeaders {
+		for _, v := range vs {
+			req.Header.Add(k, v)
+		}
+	}
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("llmexec: ping http: %w", err)
+	}
+	defer resp.Body.Close()
+	const maxRead = 8 << 20
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxRead))
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return &ErrUpstream{
+			StatusCode: resp.StatusCode,
+			Provider:   baseURL,
+			Body:       "ping: non-2xx from /models",
+		}
+	}
+	return nil
+}
+
 // Do sends a single chat-completion request to the supplied base URL
 // and returns the assistant turn. The supplied model is sent
 // verbatim; we do NOT prepend any vendor-specific prefix (no
