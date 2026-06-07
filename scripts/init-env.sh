@@ -74,11 +74,14 @@ fi
 
 API_URL="http://${LOCAL_IP}:${PORT}"
 
-# CORS_ALLOWED_ORIGINS is a comma-separated list. The LAN IP entry is
-# intentionally written without a port (the example in the env file uses
-# bare hostnames). Loopback dev origins keep their ports so curl /
-# browser dev tools from this same machine still pass CORS.
-CORS_VALUE="http://${LOCAL_IP},http://localhost:${FRONTEND_PORT},http://localhost:${PORT},http://127.0.0.1:${FRONTEND_PORT},http://127.0.0.1:${PORT}"
+# CORS_ALLOWED_ORIGINS is a comma-separated list. Per the CORS spec, a
+# browser's Origin header always includes the port (unless it's the
+# default for the scheme — 80/443). So every entry here MUST carry its
+# port, including the LAN IP one; a bare `http://192.168.1.8` will never
+# match a request originating from `http://192.168.1.8:3000`, and the
+# browser will block the call. NEXT_PUBLIC_API_URL also needs its port
+# (it's a real URL the browser fetches, not an origin allowlist).
+CORS_VALUE="http://${LOCAL_IP},http://${LOCAL_IP}:${FRONTEND_PORT},http://${LOCAL_IP}:${PORT}"
 
 echo "==> Detected local IP: $LOCAL_IP"
 echo "==> Setting NEXT_PUBLIC_API_URL=${API_URL}"
