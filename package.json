@@ -26,6 +26,8 @@
     "clean": "turbo clean && rm -rf node_modules",
     "ui:add": "cd packages/ui && npx shadcn@latest add",
     "generate:reserved-slugs": "node scripts/generate-reserved-slugs.mjs",
+    "init:env": "bash scripts/init-env.sh",
+    "init:env:worktree": "bash scripts/init-worktree-env.sh .env.worktree",
     "build:daemon": "make build",
     "daemon:login": "./server/bin/multica setup self-host",
     "daemon:start": "./server/bin/multica daemon restart",

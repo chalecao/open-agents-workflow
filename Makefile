@@ -1,4 +1,4 @@
-.PHONY: help makehelp dev server daemon cli multica build test migrate-up migrate-down sqlc seed clean setup start stop check worktree-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree db-up db-down db-reset selfhost selfhost-build selfhost-stop
+.PHONY: help makehelp dev server daemon cli multica build test migrate-up migrate-down sqlc seed clean setup start stop check worktree-env init-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree db-up db-down db-reset selfhost selfhost-build selfhost-stop
 
 MAIN_ENV_FILE ?= .env
 WORKTREE_ENV_FILE ?= .env.worktree
@@ -152,6 +152,9 @@ selfhost-stop: ## Stop the self-hosted Docker Compose stack
 
 # ---------- One-click commands ----------
 ##@ One-click
+
+init-env: ## Create .env from .env.example and bind NEXT_PUBLIC_API_URL / CORS_ALLOWED_ORIGINS to the LAN IP
+	@bash scripts/init-env.sh "$(MAIN_ENV_FILE)"
 
 setup: ## Prepare the current checkout from its env file: install deps, ensure DB, run migrations
 	$(REQUIRE_ENV)
