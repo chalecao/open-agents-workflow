@@ -6,7 +6,7 @@ description: 配 Email 验证码登录、Google OAuth、注册白名单和本地
 import { Callout } from "fumadocs-ui/components/callout";
 import { Mermaid } from "@/components/mermaid";
 
-Multica 支持两种登录方式：**Email + 验证码**（默认）和 **Google OAuth**（可选）。登录成功后 server 签发一个 30 天有效期的 JWT cookie。这一页讲怎么配、怎么限制谁能注册、以及本地测试验证码怎么安全使用。
+MultiAgent 支持两种登录方式：**Email + 验证码**（默认）和 **Google OAuth**（可选）。登录成功后 server 签发一个 30 天有效期的 JWT cookie。这一页讲怎么配、怎么限制谁能注册、以及本地测试验证码怎么安全使用。
 
 上面用到的环境变量的清单见 [环境变量](/environment-variables)；token 怎么用、生命周期细节见 [认证与令牌](/auth-tokens)。
 
@@ -109,7 +109,7 @@ MULTICA_DEV_VERIFICATION_CODE=888888
 可选。不配就只有 Email + 验证码登录；配了后登录页会多出「用 Google 登录」按钮。
 
 1. 去 [Google Cloud Console](https://console.cloud.google.com/) 创建一个 OAuth 2.0 client
-2. **授权的回调 URI**（Authorized redirect URIs）填你的 Multica 前端地址加 `/auth/callback`，例如：
+2. **授权的回调 URI**（Authorized redirect URIs）填你的 MultiAgent 前端地址加 `/auth/callback`，例如：
 
     ```text
     https://multica.yourdomain.com/auth/callback
@@ -171,7 +171,7 @@ graph TD
 
 ## 关了注册还能邀请人进来吗
 
-**只对已经有 Multica 账号的人能**。接受邀请那一步不检查 signup 白名单——如果对方已经注册过（比如在别的工作区），他们点链接登录就能直接接受。
+**只对已经有 MultiAgent 账号的人能**。接受邀请那一步不检查 signup 白名单——如果对方已经注册过（比如在别的工作区），他们点链接登录就能直接接受。
 
 **但还没注册过的人，邀请救不了他们**。他们接受邀请前必须先登录，登录的第一步（发验证码）会过 signup 白名单检查。如果你 `ALLOW_SIGNUP=false`、或他们的邮箱不在 `ALLOWED_EMAILS` / `ALLOWED_EMAIL_DOMAINS` 里，他们**没法完成注册**，也就没法接受邀请。
 

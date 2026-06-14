@@ -1,4 +1,4 @@
-# Multica CLI — Installation Guide for AI Agents
+# MultiAgent CLI — Installation Guide for AI Agents
 
 > **Audience:** This document is designed for AI agents (Claude Code, Codex, etc.) to read and execute step-by-step. Each step includes the exact shell commands to run, expected outcomes, and error handling.
 
@@ -7,12 +7,12 @@
 Give this instruction to your AI agent:
 
 ```
-Fetch https://github.com/multica-ai/multica/blob/main/CLI_INSTALL.md and follow the instructions to install Multica CLI, log in, and start the daemon on this machine.
+Fetch https://github.com/multica-ai/multica/blob/main/CLI_INSTALL.md and follow the instructions to install MultiAgent CLI, log in, and start the daemon on this machine.
 ```
 
 ---
 
-## Step 1: Check if Multica CLI is already installed
+## Step 1: Check if MultiAgent CLI is already installed
 
 Run:
 
@@ -25,7 +25,7 @@ multica version
 
 ---
 
-## Step 2: Install the Multica CLI
+## Step 2: Install the MultiAgent CLI
 
 > **Windows users:** Skip to [Option C: Windows (PowerShell)](#option-c-windows-powershell) below.
 
@@ -127,7 +127,7 @@ multica login
 
 **Important:** This command opens a browser window for OAuth authentication. Tell the user:
 
-> "A browser window will open for Multica login. Please complete the authentication in your browser, then come back here."
+> "A browser window will open for MultiAgent login. Please complete the authentication in your browser, then come back here."
 
 Wait for the command to complete. It will automatically discover and watch all workspaces the user belongs to.
 
@@ -190,7 +190,7 @@ Confirm:
 
 If the agents list is empty, tell the user:
 
-> "The Multica daemon is running but no AI agent CLIs were detected. Please install at least one supported CLI (`claude`, `codex`, `copilot`, `opencode`, `openclaw`, `hermes`, `gemini`, `pi`, or `cursor-agent`), then restart the daemon with `multica daemon stop && multica daemon start`."
+> "The MultiAgent daemon is running but no AI agent CLIs were detected. Please install at least one supported CLI (`claude`, `codex`, `copilot`, `opencode`, `openclaw`, `hermes`, `gemini`, `pi`, or `cursor-agent`), then restart the daemon with `multica daemon stop && multica daemon start`."
 
 ---
 
@@ -198,4 +198,4 @@ If the agents list is empty, tell the user:
 
 When all steps are complete, inform the user:
 
-> "Multica CLI is installed and the daemon is running. Agents in your workspaces can now execute tasks on this machine. You can manage workspaces with `multica workspace list` and view daemon logs with `multica daemon logs -f`."
+> "MultiAgent CLI is installed and the daemon is running. Agents in your workspaces can now execute tasks on this machine. You can manage workspaces with `multica workspace list` and view daemon logs with `multica daemon logs -f`."

@@ -136,7 +136,7 @@ type DispatchResult struct {
 	IssueIdentifier string
 	// IssueTitle is the title the user supplied on /issue, echoed back
 	// in the confirmation message so the chat history reads naturally
-	// even when the Multica deep link is not reachable.
+	// even when the MultiAgent deep link is not reachable.
 	IssueTitle string
 }
 

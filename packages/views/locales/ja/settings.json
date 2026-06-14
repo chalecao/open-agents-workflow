@@ -82,7 +82,7 @@
     },
     "system": {
       "title": "システム通知",
-      "description": "Multica がバックグラウンドにあるときに表示される OS のネイティブ通知バナーを制御します。",
+      "description": "MultiAgent がバックグラウンドにあるときに表示される OS のネイティブ通知バナーを制御します。",
       "label": "システム通知を表示",
       "hint": "アプリにフォーカスがないときに、新しいインボックス項目について OS のバナーを表示します。"
     }
@@ -176,7 +176,7 @@
     "toast_failed": "設定を更新できませんでした"
   },
   "github": {
-    "page_description": "GitHub App を接続し、Pull request が Multica 内でどう表示されるかを制御し、エージェントがコミット履歴に残す情報を設定します。",
+    "page_description": "GitHub App を接続し、Pull request が MultiAgent 内でどう表示されるかを制御し、エージェントがコミット履歴に残す情報を設定します。",
     "section_master": "GitHub 機能を有効にする",
     "master_description_on": "オフにすると、すべての GitHub UI が非表示になり、新しい副作用が記録されなくなります。既存のデータはバックエンドに保持されます。開発チームではありませんか？ここでオフにできます。",
     "master_description_off": "GitHub 機能はオフです。PR サイドバー、Co-authored-by トレーラー、自動リンクが一時停止されています。バックエンドのデータは削除されません。",
@@ -193,7 +193,7 @@
     "disconnect": "接続解除",
     "disconnecting": "接続解除中…",
     "disconnect_confirm_title": "GitHub App の接続を解除",
-    "disconnect_confirm_description": "Multica はこのインストールの Webhook 受信を停止します。既存の PR ミラーとリンクは保持され、いつでも再接続して更新を再開できます。",
+    "disconnect_confirm_description": "MultiAgent はこのインストールの Webhook 受信を停止します。既存の PR ミラーとリンクは保持され、いつでも再接続して更新を再開できます。",
     "disconnect_confirm_cancel": "キャンセル",
     "disconnect_confirm_action": "接続解除",
     "not_configured": "このデプロイには GitHub 連携が設定されていません。運営者が次の値を設定する必要があります:",
@@ -220,7 +220,7 @@
   },
   "lark": {
     "section_title": "Lark",
-    "page_description": "各 Multica エージェントを Lark (飞书) PersonalAgent ボットに接続します。メンバーはボットに DM したり、グループで @ メンションしたり、/issue と入力して新しい Multica イシューを起こすことができます。",
+    "page_description": "各 MultiAgent エージェントを Lark (飞书) PersonalAgent ボットに接続します。メンバーはボットに DM したり、グループで @ メンションしたり、/issue と入力して新しい MultiAgent イシューを起こすことができます。",
     "not_enabled_title": "Lark 連携が有効化されていません",
     "not_enabled_description_prefix": "Lark ボットの設置を有効化するにはサーバーに",
     "not_enabled_description_suffix": "を設定してください。",
@@ -286,7 +286,7 @@
     "install_error_expired": "承認前に QR が期限切れになりました。もう一度スキャンしてください。",
     "install_error_access_denied": "Lark で設置がキャンセルされました。",
     "install_error_protocol": "Lark が設置を拒否しました — もう一度お試しください。",
-    "install_error_bot_info": "承認はされましたが、Multica がボットの識別子を取得できませんでした。もう一度お試しください。",
+    "install_error_bot_info": "承認はされましたが、MultiAgent がボットの識別子を取得できませんでした。もう一度お試しください。",
     "install_error_conflict": "設置を保存できませんでした。別のボットがすでにこのエージェントに接続されている可能性があります。",
     "install_error_installer_bind": "ボットは設置されましたが、Lark の身元情報を連携できませんでした。もう一度お試しいただくか、サポートにお問い合わせください。",
     "install_error_session_lost": "設置セッションが期限切れまたは失われました。もう一度スキャンしてやり直してください。",
@@ -294,7 +294,7 @@
     "install_error_generic": "設置に失敗しました。もう一度お試しください。"
   },
   "llm_providers": {
-    "page_description": "OpenAI 互換の LLM エンドポイント（クラウドモデル、または Ollama / vLLM などのローカルサーバー）を接続します。Multica はエージェントの指示とスキルを使って、設定されたプロバイダーにタスクをルーティングします。",
+    "page_description": "OpenAI 互換の LLM エンドポイント（クラウドモデル、または Ollama / vLLM などのローカルサーバー）を接続します。MultiAgent はエージェントの指示とスキルを使って、設定されたプロバイダーにタスクをルーティングします。",
     "section_configured": "設定済みのプロバイダー",
     "loading": "読み込み中…",
     "add": "プロバイダーを追加",
@@ -306,7 +306,7 @@
     "cancel": "キャンセル",
     "delete": "削除",
     "deleting": "削除中…",
-    "dialog_description": "Multica に OpenAI 互換の HTTP エンドポイントを指定します。モデル名と API キーは設定されたとおりにサーバーに送信されます。",
+    "dialog_description": "MultiAgent に OpenAI 互換の HTTP エンドポイントを指定します。モデル名と API キーは設定されたとおりにサーバーに送信されます。",
     "field_name": "名前",
     "field_name_placeholder": "例: OpenAI Cloud、Local Ollama",
     "field_base_url": "ベース URL",

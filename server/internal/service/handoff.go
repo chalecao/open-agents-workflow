@@ -63,8 +63,17 @@ type HandoffRule struct {
 	Value string          `json:"value"`
 }
 
-// HandoffRuleSet is the full handoff configuration stored on an autopilot
-// row: the rule array + the boolean operator + the comment template.
+// HandoffRuleSet is the in-memory shape of a handoff autopilot's
+// configuration: the rule array + the boolean operator + the comment
+// template. It crosses the handler boundary as the JSON body of a
+// CreateAutopilot / UpdateAutopilot request and back as the matching
+// response fields.
+//
+// It is NOT the persisted shape: autopilot.handoff_rules is a JSONB array
+// (CHECK jsonb_typeof = 'array'), while operator and comment template live
+// in dedicated columns (handoff_rules_operator / handoff_comment_template).
+// The Encode/Decode helpers below split the set back into its column
+// pieces — see EncodeHandoffRuleSet / DecodeHandoffRuleSet.
 //
 // CommentTemplate is the body of the @-mention comment the autopilot posts
 // when a rule set matches. It supports {{handoff_data}} interpolation
@@ -152,39 +161,48 @@ func validateHandoffRule(r HandoffRule) error {
 
 // ── JSONB round-trip ──────────────────────────────────────────────────────
 
-// EncodeHandoffRuleSet marshals a typed HandoffRuleSet to the JSON bytes
-// stored in autopilot.handoff_rules. The DB column default is '[]'::jsonb,
-// so a brand-new autopilot with no rules writes an empty array — never
-// nil bytes, which sqlc would otherwise hand to PG as NULL and trip the
-// autopilot_handoff_rules_is_array CHECK.
+// EncodeHandoffRuleSet marshals the rule array of a HandoffRuleSet to the
+// JSON bytes stored in autopilot.handoff_rules. The DB column is a JSONB
+// ARRAY (CHECK jsonb_typeof = 'array'); operator and comment template are
+// stored in dedicated columns (handoff_rules_operator /
+// handoff_comment_template) and never go through this column.
+//
+// Persisting only the rule slice keeps the column shape aligned with the
+// autopilot_handoff_rules_is_array CHECK. A nil rule set is encoded as the
+// empty array `[]` so a non-handoff autopilot can still be inserted with a
+// concrete, non-NULL value (the column is NOT NULL and the INSERT names
+// the column explicitly, bypassing the server-side default).
 func EncodeHandoffRuleSet(set HandoffRuleSet) ([]byte, error) {
-	if set.Rules == nil {
-		set.Rules = []HandoffRule{}
+	rules := set.Rules
+	if rules == nil {
+		rules = []HandoffRule{}
 	}
-	if set.Operator == "" {
-		set.Operator = HandoffRulesAll
-	}
-	return json.Marshal(set)
+	return json.Marshal(rules)
 }
 
 // DecodeHandoffRuleSet unmarshals the JSONB blob stored on autopilot rows.
+// The column is a JSONB array, so we decode the rule list and assemble a
+// HandoffRuleSet with zero operator and comment template — callers that
+// need those fields must read the dedicated columns
+// (handoff_rules_operator / handoff_comment_template) off the autopilot
+// row, not out of this set.
+//
 // A nil/empty blob (legacy rows that pre-date the column) decodes to the
-// zero value (operator="" → defaults to 'all' at evaluation time, no rules
-// → never matches). Unparseable bytes are also returned as the zero
-// value + error, so the caller can decide whether to skip the autopilot
-// or treat it as a misconfigured row.
+// zero value with no rules. Unparseable bytes return an error so the
+// caller can decide whether to skip the autopilot (dispatcher) or surface
+// a 500 (update handler with a corrupt row).
 func DecodeHandoffRuleSet(raw []byte) (HandoffRuleSet, error) {
 	if len(raw) == 0 {
 		return HandoffRuleSet{Operator: HandoffRulesAll, Rules: []HandoffRule{}}, nil
 	}
-	var set HandoffRuleSet
-	if err := json.Unmarshal(raw, &set); err != nil {
+	var rules []HandoffRule
+	if err := json.Unmarshal(raw, &rules); err != nil {
 		return HandoffRuleSet{}, fmt.Errorf("decode handoff_rules: %w", err)
 	}
-	if set.Operator == "" {
-		set.Operator = HandoffRulesAll
+	if rules == nil {
+		rules = []HandoffRule{}
 	}
-	return set, nil
+	return HandoffRuleSet{Operator: HandoffRulesAll, Rules: rules}, nil
 }
 
 // ── Evaluation ────────────────────────────────────────────────────────────

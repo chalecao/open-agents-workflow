@@ -19,7 +19,7 @@ The legacy `packages/views/locales/glossary.md` is now a stub redirecting to the
 
 ## Project Context
 
-Multica is an AI-native task management platform — like Linear, but with AI agents as first-class citizens.
+MultiAgent is an AI-native task management platform — like Linear, but with AI agents as first-class citizens.
 
 - Agents can be assigned issues, create issues, comment, and change status
 - Supports local (daemon) and cloud agent runtimes

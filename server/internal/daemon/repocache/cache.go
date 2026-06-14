@@ -773,7 +773,7 @@ const multicaHookMarker = "# multica:prepare-commit-msg:co-authored-by"
 
 // daemonInstalledHookSignatures lists substrings that identify a
 // prepare-commit-msg hook as one the daemon installed. removeCoAuthoredByHook
-// treats a hook as Multica-owned if its content contains ANY of these
+// treats a hook as MultiAgent-owned if its content contains ANY of these
 // substrings. The list deliberately includes the legacy comment that the
 // daemon used before multicaHookMarker existed, so disabling the toggle on
 // existing installations still cleans up old hooks seeded by previous daemon
@@ -785,11 +785,11 @@ var daemonInstalledHookSignatures = []string{
 }
 
 // prepareCommitMsgHook is the prepare-commit-msg hook script that appends a
-// Co-authored-by trailer for the Multica Agent to every commit message.
+// Co-authored-by trailer for the MultiAgent Agent to every commit message.
 const prepareCommitMsgHook = `#!/bin/sh
 # multica:prepare-commit-msg:co-authored-by
-# Multica: add Co-authored-by trailer for the Multica Agent.
-# Installed by the Multica daemon. Do not edit — it will be overwritten.
+# MultiAgent: add Co-authored-by trailer for the MultiAgent Agent.
+# Installed by the MultiAgent daemon. Do not edit — it will be overwritten.
 
 COMMIT_MSG_FILE="$1"
 COMMIT_SOURCE="$2"
@@ -811,8 +811,8 @@ git interpret-trailers --in-place --trailer "$TRAILER" "$COMMIT_MSG_FILE"
 `
 
 // installCoAuthoredByHook installs a prepare-commit-msg git hook that appends
-// a Co-authored-by trailer for the Multica Agent. The hook is installed in the
-// git common directory (the bare repo for worktrees) so it applies to all
+// a Co-authored-by trailer for the MultiAgent Agent. The hook is installed in
+// the git common directory (the bare repo for worktrees) so it applies to all
 // worktrees created from this cache.
 func installCoAuthoredByHook(worktreePath string) error {
 	cmd := exec.Command("git", "-C", worktreePath, "rev-parse", "--git-common-dir")
@@ -839,7 +839,7 @@ func installCoAuthoredByHook(worktreePath string) error {
 }
 
 // isDaemonInstalledHook reports whether a prepare-commit-msg hook on disk was
-// installed by the Multica daemon (current or any previously released
+// installed by the MultiAgent daemon (current or any previously released
 // version). It returns false for hooks that don't carry any known daemon
 // signature, so a user-installed hook at the same path is left alone.
 func isDaemonInstalledHook(contents []byte) bool {

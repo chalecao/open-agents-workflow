@@ -1,11 +1,11 @@
 ---
 name: multica-squads
-description: Use when creating, inspecting, updating, assigning, mentioning, or debugging Multica squads. Explains what squads are, squad/member fields, CLI commands, leader routing, issue assignment, comments, mentions, autopilot behavior, leader briefing, side effects, and product-gap handling.
+description: Use when creating, inspecting, updating, assigning, mentioning, or debugging MultiAgent squads. Explains what squads are, squad/member fields, CLI commands, leader routing, issue assignment, comments, mentions, autopilot behavior, leader briefing, side effects, and product-gap handling.
 user-invocable: false
 allowed-tools: Bash(multica *)
 ---
 
-# Multica Squads
+# MultiAgent Squads
 
 ## Quick start
 
@@ -32,7 +32,7 @@ to test. These can mutate workspace state or trigger agent runs.
 
 ## Core model
 
-A Multica squad is a workspace routing and coordination object.
+A MultiAgent squad is a workspace routing and coordination object.
 
 A squad is not an agent. It does not run work by itself. Current behavior:
 squad-routed work runs through the squad's `leader_id` agent.
@@ -130,7 +130,7 @@ the backend adds the new leader as a squad member with role `leader`.
 
 ## Leader briefing
 
-For squad leader tasks, Multica appends a squad leader briefing to the leader
+For squad leader tasks, MultiAgent appends a squad leader briefing to the leader
 agent instructions. The briefing includes:
 
 - Squad Operating Protocol;

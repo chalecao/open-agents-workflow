@@ -1,14 +1,14 @@
 ---
 name: multica-skill-importing
-description: Use when a user provides a skill URL, slug, or clear intent to import/install a specific skill into the current Multica workspace. Teaches the workspace import API/CLI path (POST /api/skills/import), the supported URL source families, the SkillWithFilesResponse shape returned on success, duplicate 409 handling with the existing_skill body, additive agent binding vs replace-all, and the reserved SKILL.md supporting-file rule. Do not use it to decide which skill the user needs, and never treat an external local installer like npx skills add as the final Multica install.
+description: Use when a user provides a skill URL, slug, or clear intent to import/install a specific skill into the current MultiAgent workspace. Teaches the workspace import API/CLI path (POST /api/skills/import), the supported URL source families, the SkillWithFilesResponse shape returned on success, duplicate 409 handling with the existing_skill body, additive agent binding vs replace-all, and the reserved SKILL.md supporting-file rule. Do not use it to decide which skill the user needs, and never treat an external local installer like npx skills add as the final MultiAgent install.
 user-invocable: false
 allowed-tools: Bash(multica *)
 ---
 
-# Importing skills into Multica
+# Importing skills into MultiAgent
 
 Use this skill when the user already provided a skill URL, slug, or a clear intent
-to import a specific skill into the current Multica workspace.
+to import a specific skill into the current MultiAgent workspace.
 
 Do not use this skill to decide which skill the user needs. If the user only
 describes a capability and no URL is known, external search may produce candidate
@@ -20,7 +20,7 @@ Every claim below is traced to source in
 
 ## The invariant
 
-A skill is installed for Multica only when it exists in the current workspace's
+A skill is installed for MultiAgent only when it exists in the current workspace's
 skill database. The single supported path that puts it there is the workspace
 import endpoint, driven by this CLI:
 
@@ -36,7 +36,7 @@ body: { "url": "<url>" }
 ```
 
 Do not finish with `npx skills add`. That installs into an external/local skill
-environment, not the Multica workspace DB, so Multica cannot manage or bind it.
+environment, not the MultiAgent workspace DB, so MultiAgent cannot manage or bind it.
 
 ## Supported URL source families
 
@@ -158,13 +158,13 @@ dodge the conflict.
 
 ## Incorrect → correct
 
-Incorrect (bypasses Multica):
+Incorrect (bypasses MultiAgent):
 
 ```bash
 npx skills add https://skills.sh/owner/repo/skill
 ```
 
-The skill may exist locally, but Multica cannot manage it as a workspace skill.
+The skill may exist locally, but MultiAgent cannot manage it as a workspace skill.
 
 Incorrect agent binding for a normal add (replaces every existing assignment):
 

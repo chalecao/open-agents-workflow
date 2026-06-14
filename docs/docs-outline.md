@@ -1,4 +1,4 @@
-# Multica Docs 执行大纲
+# MultiAgent Docs 执行大纲
 
 > 这份是**执行文档 + 协作 tracker**。每篇文档都有独立条目，委派出去的人直接在对应条目里认领、更新状态。
 >
@@ -17,7 +17,7 @@
 2. **代码里没有的功能一律不写**。即使 UI 疑似有、DB 有字段、handler 有接口但 service 层无真实读写逻辑，都视为"未实装"。遇到边界不确定的情况，标 ⚠️ 让 reviewer 再看一眼，不要硬写。
 3. **下笔前先读源码验证本文件里的"写什么"清单**。这个清单是指引，不是真相。可能已过时、可能当时调研就不准。
 4. **跨篇共通事实集中写**（例如 10 provider 矩阵写在 §4.3 Providers Matrix，其他篇 cross-link 过去），避免同一事实分散在多篇里。
-5. **服务于产品定位**：Multica 的核心差异化是 **"BYO-agent 的 Linear—— agent 跑在你自己的机器，你掌控计算和 provider 选择"**。每篇的语气和深度都应该为这个叙事服务。
+5. **服务于产品定位**：MultiAgent 的核心差异化是 **"BYO-agent 的 Linear—— agent 跑在你自己的机器，你掌控计算和 provider 选择"**。每篇的语气和深度都应该为这个叙事服务。
 6. **为目标读者写**。不同读者期待不同深度。P0 新用户不关心 SQL 字段，P1 开发者愿意看架构图，P2 agent 读者需要命令自包含能复制。
 7. **v1 认领优先**：先把 v1 的 25 篇 ship 出去，再开 v2。
 
@@ -80,20 +80,20 @@
 ```mdx
 ---
 title: Issues
-description: Issue 是 Multica 的核心工作对象——人和 agent 都能被分配、评论、改状态。
+description: Issue 是 MultiAgent 的核心工作对象——人和 agent 都能被分配、评论、改状态。
 ---
 
 # Issues
 
 ## 什么是 Issue
 
-Issue 是 Multica 的核心工作对象……（1-2 段话说清楚"是什么"）
+Issue 是 MultiAgent 的核心工作对象……（1-2 段话说清楚"是什么"）
 
 ## 关键概念
 
 ### Polymorphic Assignee
 
-Issue 的 assignee 可以是 member（人）或 agent。这是 Multica 和传统 task manager
+Issue 的 assignee 可以是 member（人）或 agent。这是 MultiAgent 和传统 task manager
 最重要的区别——**agent 是 first-class assignee**。
 
 <Callout type="info">
@@ -127,7 +127,7 @@ multica issue create \
 multica issue assign <issue-id> --agent <agent-slug>
 ```
 
-分配给 agent 时，Multica 会立刻入队一个 task 到对应 runtime。详见
+分配给 agent 时，MultiAgent 会立刻入队一个 task 到对应 runtime。详见
 [Assigning Issues to Agents](/docs/assign-agents)。
 
 ## 删除和级联
@@ -201,7 +201,7 @@ multica issue assign <issue-id> --agent <agent-slug>
 ### 1.1 Welcome — 👀 In review [v1]
 
 - **Source files**: `README.md`, `docs/docs-rewrite-plan.md`（定位段）, `apps/docs/content/docs/index.mdx`（现状）
-- **目标读者**: P0 新用户 / evaluator（第一次听说 Multica）
+- **目标读者**: P0 新用户 / evaluator（第一次听说 MultiAgent）
 - **叙事位置**: 第一页。定义整个产品。读完应该能回答"这是啥"。
 - **Punch line（推荐）**: **"Your agents, your machine, your backlog."**
   > The task manager where AI teammates run on your own laptop.
@@ -227,7 +227,7 @@ multica issue assign <issue-id> --agent <agent-slug>
 - **Flag**: –
 - **交付位置**: `apps/docs/content/docs/index.mdx`（v1 暂平铺，未迁 `zh/`）
 
-### 1.2 How Multica Works — ⬜ Not started [v1]
+### 1.2 How MultiAgent Works — ⬜ Not started [v1]
 
 - **Source files**: `server/cmd/multica-daemon/`, `packages/core/`, 战略 plan 的"产品定位"段
 - **目标读者**: P0 新用户（想先建立心智模型再动手）
@@ -429,7 +429,7 @@ multica issue assign <issue-id> --agent <agent-slug>
   - **开篇借 Anthropic 比喻**：
     > "Skill 是 agent 的'员工专业知识'——程序性知识模块；MCP 是 agent 的'工具通道'——外部系统连通性。" （引自 Anthropic 官方博客）
   - **兼容性宣示**：
-    > "Multica Skill 采用 [Anthropic Agent Skills 开放标准](https://agentskills.io) 的 `SKILL.md` 格式。所有符合该规范的 skill（包括 Anthropic 官方仓库、ClawHub、skills.sh 上发布的包）都可以直接导入使用。"
+    > "MultiAgent Skill 采用 [Anthropic Agent Skills 开放标准](https://agentskills.io) 的 `SKILL.md` 格式。所有符合该规范的 skill（包括 Anthropic 官方仓库、ClawHub、skills.sh 上发布的包）都可以直接导入使用。"
   - Skill 文件结构（SKILL.md + config + 任意支持文件）
   - 来源：workspace skill（云端）vs local skill（daemon 扫描本机）
   - 导入：新建 / GitHub / ClawHub / 本机目录
@@ -438,7 +438,7 @@ multica issue assign <issue-id> --agent <agent-slug>
   - Skill 在 task dispatch 时同步
   - **⚠️ ClawHavoc 警示**：2026-2 曝过 "ClawHavoc" 恶意包事件。ClawHub 已集成 VirusTotal 扫描，但安装第三方 skill 前务必检查 SKILL.md 和附带脚本。
   - **末尾一段"Skills vs MCP"**（v2 再开 MCP 独立页）:
-    > MCP（Model Context Protocol）是另一层概念——让 agent 连外部工具（数据库、文件系统、第三方 API）。Multica 支持 `mcp_config` 字段，但目前**仅 Claude Code 真实消费**，其他 provider 接收但未传递。详见 v2 的 MCP 专页（开发中）。
+    > MCP（Model Context Protocol）是另一层概念——让 agent 连外部工具（数据库、文件系统、第三方 API）。MultiAgent 支持 `mcp_config` 字段，但目前**仅 Claude Code 真实消费**，其他 provider 接收但未传递。详见 v2 的 MCP 专页（开发中）。
 - **不写**: skill 内部 DSL（不存在）、MCP 深入（v2）
 - **写前要验证**:
   - 10 provider 路径是否还都对（execenv/context.go 最新值）
@@ -453,7 +453,7 @@ multica issue assign <issue-id> --agent <agent-slug>
 
 ## 板块 4：How Agents Run
 
-> **板块叙事**：agent 怎么真的动起来——分布式执行、用户自己跑 daemon。这是 Multica 结构上区别于 Linear/Jira 的关键部分。
+> **板块叙事**：agent 怎么真的动起来——分布式执行、用户自己跑 daemon。这是 MultiAgent 结构上区别于 Linear/Jira 的关键部分。
 
 ### 4.1 Daemon & Runtimes — ⬜ Not started [v1]
 
@@ -532,7 +532,7 @@ multica issue assign <issue-id> --agent <agent-slug>
     - **开源替代**：OpenCode（SST）/ Pi（minimalist）/ OpenClaw
   - **大对照表**:
     | Provider | 厂商 | Session Resume | MCP | Skill 注入路径 | custom_args | 备注 |
-  - 每个 provider 一小段（80-150 字）：核心定位 + 用户画像 + 官网链接 + Multica 兼容性
+  - 每个 provider 一小段（80-150 字）：核心定位 + 用户画像 + 官网链接 + MultiAgent 兼容性
   - **Session resume 精确现状**:
     - ✅ 真用：Claude / Hermes / Kimi / OpenCode / Copilot
     - ⚠️ Codex：代码有 thread/resume 但 unreachable（future feature）

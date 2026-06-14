@@ -1,11 +1,11 @@
 ---
 title: Desktop app
-description: What Multica Desktop is, how it differs from the web app, and when it's worth using.
+description: What MultiAgent Desktop is, how it differs from the web app, and when it's worth using.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Multica Desktop is a native desktop app for macOS, Windows, and Linux. For the environment it is configured for, it talks to the same backend as the web app and shows the same data. By default Desktop uses Multica Cloud; self-hosted instances can be configured with a local runtime config file. Desktop also adds a few things the browser can't: **independent tab groups per [workspace](/workspaces)**, **automatic [daemon](/daemon-runtimes) startup**, and **one-click upgrades**.
+MultiAgent Desktop is a native desktop app for macOS, Windows, and Linux. For the environment it is configured for, it talks to the same backend as the web app and shows the same data. By default Desktop uses MultiAgent Cloud; self-hosted instances can be configured with a local runtime config file. Desktop also adds a few things the browser can't: **independent tab groups per [workspace](/workspaces)**, **automatic [daemon](/daemon-runtimes) startup**, and **one-click upgrades**.
 
 ## Desktop or web — which to pick
 
@@ -55,7 +55,7 @@ If you want to run CLI commands in your terminal, Desktop doesn't offer a specia
 
 ## Downloading and installing
 
-Grab the installer for your platform from the [Multica downloads page](https://multica.ai/download):
+Grab the installer for your platform from the [MultiAgent downloads page](https://multica.ai/download):
 
 | Platform | File |
 |---|---|
@@ -67,7 +67,7 @@ Grab the installer for your platform from the [Multica downloads page](https://m
 On first launch you'll need to sign in — the same email + verification code flow as the web app. Once you're in, Desktop syncs your workspace list automatically.
 
 <Callout type="info">
-**Desktop defaults to Multica Cloud, but can be pointed at a self-hosted instance with a local config file.** There is still no in-app "connect to self-host" picker. Desktop reads `~/.multica/desktop.json` before the renderer starts; if the file is missing, it uses the Cloud defaults.
+**Desktop defaults to MultiAgent Cloud, but can be pointed at a self-hosted instance with a local config file.** There is still no in-app "connect to self-host" picker. Desktop reads `~/.multica/desktop.json` before the renderer starts; if the file is missing, it uses the Cloud defaults.
 
 Minimal self-host config:
 

@@ -1,11 +1,11 @@
 ---
 title: セルフホスティングのクイックスタート
-description: Docker で自分のサーバーやマシン上に Multica を実行します（Kubernetes では Helm が利用できます）。所要時間は約10分です。
+description: Docker で自分のサーバーやマシン上に MultiAgent を実行します（Kubernetes では Helm が利用できます）。所要時間は約10分です。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-このページでは、Docker を使って Multica **サーバー**（バックエンド + フロントエンド + PostgreSQL）を自分のマシンやサーバー上で実行する手順を案内します。完了すると、[ワークスペース](/workspaces)、[イシュー](/issues)、[コメント](/comments)、[エージェント](/agents)の構成を含むデータが、完全にあなたの管理下に置かれます。
+このページでは、Docker を使って MultiAgent **サーバー**（バックエンド + フロントエンド + PostgreSQL）を自分のマシンやサーバー上で実行する手順を案内します。完了すると、[ワークスペース](/workspaces)、[イシュー](/issues)、[コメント](/comments)、[エージェント](/agents)の構成を含むデータが、完全にあなたの管理下に置かれます。
 
 エージェントの **実行** は、依然としてローカルで動かす[デーモン](/daemon-runtimes)と、そのマシンにインストールされた [AI コーディングツール](/providers)に依存します — Cloud とまったく同じです。セルフホスティングはサーバー層を置き換えるだけで、実行層を置き換えるわけではありません。
 
@@ -31,7 +31,7 @@ make selfhost
 `make selfhost` は次のことを行います。
 
 1. `.env` がなければ `.env.example` から生成し、**ランダムな JWT_SECRET** を併せて作成します
-2. 公式の Docker イメージ（PostgreSQL、Multica backend、Multica frontend）を取得します
+2. 公式の Docker イメージ（PostgreSQL、MultiAgent backend、MultiAgent frontend）を取得します
 3. `docker-compose.selfhost.yml` を使ってすべてのサービスを起動します
 4. バックエンドの `/health` エンドポイントが準備できるまで待機します
 
@@ -256,7 +256,7 @@ multica setup self-host \
   --app-url http://multica.dev.lan
 ```
 
-チャートを変更せずに最新のイメージだけを取得するには、`kubectl -n multica rollout restart deploy/multica-backend deploy/multica-frontend` を実行してください。特定の Multica リリースに固定するには、values ファイルで `images.backend.tag` / `images.frontend.tag` を設定して `helm upgrade` を実行してください。`helm -n multica uninstall multica` はワークロードを削除しますが、PVC と Secret は保持します。`kubectl delete namespace multica` はすべてを消去します。
+チャートを変更せずに最新のイメージだけを取得するには、`kubectl -n multica rollout restart deploy/multica-backend deploy/multica-frontend` を実行してください。特定の MultiAgent リリースに固定するには、values ファイルで `images.backend.tag` / `images.frontend.tag` を設定して `helm upgrade` を実行してください。`helm -n multica uninstall multica` はワークロードを削除しますが、PVC と Secret は保持します。`kubectl delete namespace multica` はすべてを消去します。
 
 完全なリファレンス — 3つのログインモード、web イメージにビルド時に焼き込まれた `REMOTE_API_URL` に対する `backend` ExternalName の回避策、リソース制限、TLS — は、リポジトリの [`SELF_HOSTING.md`](https://github.com/multica-ai/multica/blob/main/SELF_HOSTING.md#kubernetes-deployment-alternative) にあります。
 

@@ -331,7 +331,7 @@ func (s *RegistrationService) BeginInstall(ctx context.Context, p BeginInstallPa
 	//
 	// We keep the agent: its name pre-fills the bot name on Lark's
 	// PersonalAgent creation form (see botNamePreset) so the installed
-	// bot reads "<agent> - Multica" instead of "{用户姓名}的智能助手".
+	// bot reads "<agent> - MultiAgent" instead of "{用户姓名}的智能助手".
 	agent, err := s.authQueries.GetAgentInWorkspace(ctx, db.GetAgentInWorkspaceParams{
 		ID:          p.AgentID,
 		WorkspaceID: p.WorkspaceID,
@@ -653,17 +653,17 @@ func uuidEqual(a, b pgtype.UUID) bool {
 
 // botNamePreset builds the display name we pre-fill on Lark's
 // PersonalAgent creation form so the installed bot reads
-// "<agent> - Multica" instead of Lark's auto-generated
+// "<agent> - MultiAgent" instead of Lark's auto-generated
 // "{用户姓名}的智能助手". Lark treats this as a default the installer can
 // still edit; we never get to lock the final name. A blank agent name
 // (defensive — Agent.Name is NOT NULL in schema) degrades to plain
-// "Multica" rather than a dangling " - Multica".
+// "MultiAgent" rather than a dangling " - MultiAgent".
 func botNamePreset(agentName string) string {
 	name := strings.TrimSpace(agentName)
 	if name == "" {
-		return "Multica"
+		return "MultiAgent"
 	}
-	return name + " - Multica"
+	return name + " - MultiAgent"
 }
 
 // uuidString is the package-local UUID-to-string helper defined in

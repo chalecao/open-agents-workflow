@@ -53,7 +53,7 @@ type TxStarter interface {
 //
 //   - EnsureChatSession only creates / looks up rows; identity must
 //     already be resolved by the caller (the sender argument is a
-//     trusted Multica user UUID).
+//     trusted MultiAgent user UUID).
 //
 //   - AppendUserMessage runs message-write + session-touch in a single
 //     transaction so a session that has received a message has its

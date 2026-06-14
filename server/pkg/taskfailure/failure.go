@@ -53,7 +53,7 @@ type Reason string
 const agentErrorPrefix = "agent_error."
 
 const (
-	// Platform / scheduler side: failure attributable to Multica
+	// Platform / scheduler side: failure attributable to MultiAgent
 	// infrastructure rather than anything the agent process did. These
 	// are emitted by server-side sweepers (ExpireStaleQueuedTasks,
 	// FailStaleTasks, FailTasksForOfflineRuntimes,
@@ -82,7 +82,7 @@ const (
 
 	// ReasonIterationLimit: the agent reached its per-run iteration
 	// cap and emitted a fallback "I reached the iteration limit"
-	// message. Treated as platform-side because it is a Multica-imposed
+	// message. Treated as platform-side because it is a MultiAgent-imposed
 	// budget rather than an external API rejection.
 	ReasonIterationLimit Reason = "iteration_limit"
 

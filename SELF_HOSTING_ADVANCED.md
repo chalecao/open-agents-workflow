@@ -1,6 +1,6 @@
 # Self-Hosting — Advanced Configuration
 
-This document covers advanced configuration for self-hosted Multica deployments. For the quick start guide, see [SELF_HOSTING.md](SELF_HOSTING.md).
+This document covers advanced configuration for self-hosted MultiAgent deployments. For the quick start guide, see [SELF_HOSTING.md](SELF_HOSTING.md).
 
 ## Configuration
 
@@ -25,7 +25,7 @@ These have sensible defaults and only need to be set when tuning a large or cons
 
 ### Email (Required for Authentication)
 
-Multica supports two email backends. `SMTP_HOST` takes priority when set; otherwise `RESEND_API_KEY` is used. With neither configured, verification codes are printed to the server log — copy them from there to log in.
+MultiAgent supports two email backends. `SMTP_HOST` takes priority when set; otherwise `RESEND_API_KEY` is used. With neither configured, verification codes are printed to the server log — copy them from there to log in.
 
 #### Option A: Resend (recommended for cloud deployments)
 
@@ -154,7 +154,7 @@ Agent-specific overrides:
 
 ## Database Setup
 
-Multica requires PostgreSQL 17 with the pgvector extension.
+MultiAgent requires PostgreSQL 17 with the pgvector extension.
 
 ### Using Docker Compose (Recommended)
 
@@ -382,7 +382,7 @@ NEXT_PUBLIC_WS_URL=wss://api.example.com/ws
 
 ## LAN / Non-localhost Access
 
-By default, Multica works on `localhost`. If you access it from another machine on the LAN (e.g. `http://192.168.1.100:3000`), you need to tell the backend to accept that origin:
+By default, MultiAgent works on `localhost`. If you access it from another machine on the LAN (e.g. `http://192.168.1.100:3000`), you need to tell the backend to accept that origin:
 
 ```bash
 # .env — replace with your server's LAN IP
@@ -414,7 +414,7 @@ HTTP requests (issues, comments, uploads) work on LAN out of the box — Next.js
 
    `NEXT_PUBLIC_WS_URL` is a build-time variable (see `Dockerfile.web`), so setting it only in `environment:` on the pre-built image has no effect — you must use the `selfhost.build.yml` override that rebuilds the image.
 
-**Also required: allowlist the browser origin.** The two options above fix the WebSocket *upgrade proxying*, but a second, independent setting gates the connection: the backend validates the WebSocket `Origin` header against an allowlist that defaults to `localhost` only. When you open Multica from any other origin — a LAN IP **or a public domain behind a reverse proxy** — set `CORS_ALLOWED_ORIGINS` (or `FRONTEND_ORIGIN`) on the backend to that exact origin and restart, exactly as shown under [LAN / Non-localhost Access](#lan--non-localhost-access) above. Otherwise the upgrade is refused with `403`: the backend logs `websocket: request origin not allowed by Upgrader.CheckOrigin` and the browser console loops `disconnected, reconnecting in 3s`, while HTTP requests (and manual page refreshes) keep working because they are same-origin to the page. The single value covers both HTTP CORS and the WebSocket origin check.
+**Also required: allowlist the browser origin.** The two options above fix the WebSocket *upgrade proxying*, but a second, independent setting gates the connection: the backend validates the WebSocket `Origin` header against an allowlist that defaults to `localhost` only. When you open MultiAgent from any other origin — a LAN IP **or a public domain behind a reverse proxy** — set `CORS_ALLOWED_ORIGINS` (or `FRONTEND_ORIGIN`) on the backend to that exact origin and restart, exactly as shown under [LAN / Non-localhost Access](#lan--non-localhost-access) above. Otherwise the upgrade is refused with `403`: the backend logs `websocket: request origin not allowed by Upgrader.CheckOrigin` and the browser console loops `disconnected, reconnecting in 3s`, while HTTP requests (and manual page refreshes) keep working because they are same-origin to the page. The single value covers both HTTP CORS and the WebSocket origin check.
 
 > **Note:** If you need to hard-code a different public API / WebSocket endpoint into the web image for any other reason, use the same source-build override: `docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.build.yml up -d --build`.
 

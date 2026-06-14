@@ -5,7 +5,7 @@ description: Let agents start work on a cron schedule, an inbound webhook, or tr
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Autopilots let [agents](/agents) **start work automatically on a schedule** — configure a cron expression and a timezone, and Multica dispatches a [`task`](/tasks) on its own, without you triggering anything. It fits periodic checks, recurring reports, and overnight cleanup jobs — the "standing order" shape of work. Compared to the other three trigger paths ([assigning](/assigning-issues), [@-mention](/mentioning-agents), and [chat](/chat), where you are the one kicking things off), the core difference with Autopilots is that they are **time-driven**.
+Autopilots let [agents](/agents) **start work automatically on a schedule** — configure a cron expression and a timezone, and MultiAgent dispatches a [`task`](/tasks) on its own, without you triggering anything. It fits periodic checks, recurring reports, and overnight cleanup jobs — the "standing order" shape of work. Compared to the other three trigger paths ([assigning](/assigning-issues), [@-mention](/mentioning-agents), and [chat](/chat), where you are the one kicking things off), the core difference with Autopilots is that they are **time-driven**.
 
 ## Configure an autopilot
 
@@ -35,7 +35,7 @@ A few examples:
 - `*/30 * * * *`, `UTC` — every 30 minutes
 - `0 3 * * *`, `UTC` — every day at 3 AM UTC
 
-The Multica server scans for due triggers every **30 seconds** — **the actual fire time can lag by up to 30 seconds**, not down to the second. If the server is restarted across a fire time, it catches up missed triggers on startup (nothing is lost, but they fire right away).
+The MultiAgent server scans for due triggers every **30 seconds** — **the actual fire time can lag by up to 30 seconds**, not down to the second. If the server is restarted across a fire time, it catches up missed triggers on startup (nothing is lost, but they fire right away).
 
 ## Trigger once manually
 
@@ -53,13 +53,13 @@ A manual trigger goes through the exact same execution flow as a `schedule` trig
 ## Trigger from a webhook
 
 Autopilots can also fire on inbound HTTP webhooks. Add a **Webhook** trigger
-on the autopilot detail page; Multica generates a unique URL of the shape:
+on the autopilot detail page; MultiAgent generates a unique URL of the shape:
 
 ```
 https://<your-multica-host>/api/webhooks/autopilots/awt_…
 ```
 
-POST any JSON to that URL — Multica records a run with `source = webhook`,
+POST any JSON to that URL — MultiAgent records a run with `source = webhook`,
 stores the body as the run's `trigger_payload`, and dispatches the agent
 exactly the way a schedule trigger would.
 
@@ -81,7 +81,7 @@ You can send your own envelope:
 { "event": "github.pull_request.opened", "eventPayload": { } }
 ```
 
-…or any JSON object/array. Multica normalizes it into an internal envelope:
+…or any JSON object/array. MultiAgent normalizes it into an internal envelope:
 
 ```json
 {
@@ -91,7 +91,7 @@ You can send your own envelope:
 }
 ```
 
-When you don't provide an `event` field, Multica infers it from common
+When you don't provide an `event` field, MultiAgent infers it from common
 headers and body fields (`X-GitHub-Event` + body `action`,
 `X-Gitlab-Event`, `X-Event-Type`, body `event`/`type`/`action`). When
 nothing matches, the event is `webhook.received`.
@@ -111,7 +111,7 @@ history with `status = ignored` and `reason = event_filtered`, and no
 run or issue is created.
 
 Each row is one rule: an **event name** plus an optional
-comma-separated **actions** list. Multica allows a webhook if **any**
+comma-separated **actions** list. MultiAgent allows a webhook if **any**
 row matches; leave the section empty to accept everything (the
 pre-filter behavior).
 
@@ -125,7 +125,7 @@ Examples:
 
 #### Where the event name and action come from
 
-Multica derives the `event` name and `action` from the inbound request
+MultiAgent derives the `event` name and `action` from the inbound request
 in this order — **the first match wins**.
 
 **1. Body envelope.** If the body is a JSON object with a string
@@ -140,7 +140,7 @@ curl -X POST "$MULTICA_WEBHOOK_URL" \
 # inferred: event = trigger, action candidate = true
 ```
 
-**2. Headers.** When no body envelope is present, Multica reads the
+**2. Headers.** When no body envelope is present, MultiAgent reads the
 following well-known provider headers:
 
 - `X-GitHub-Event: <event>` — combined with the top-level body
@@ -166,7 +166,7 @@ curl -X POST "$MULTICA_WEBHOOK_URL" \
 ```
 
 **3. Body fallback.** If neither a body envelope nor a known header is
-present, Multica falls back to top-level body string fields in this
+present, MultiAgent falls back to top-level body string fields in this
 order: `event` → `type` → `action`.
 
 ```bash
@@ -179,7 +179,7 @@ curl -X POST "$MULTICA_WEBHOOK_URL" \
 **4. Default.** If nothing above matches, the event is
 `webhook.received` and there are no action candidates.
 
-**Action candidates, in full.** Once the event is determined, Multica
+**Action candidates, in full.** Once the event is determined, MultiAgent
 considers every value below as a possible action match:
 
 - The event-name suffix, when the event has the form
@@ -235,7 +235,7 @@ autopilot. Treat it like a token:
 
 ### Status-code semantics
 
-Multica returns `200 OK` with a `status` field for normal no-op outcomes so
+MultiAgent returns `200 OK` with a `status` field for normal no-op outcomes so
 your provider's webhook-retry machinery doesn't keep hammering the URL:
 
 - `{"status":"accepted","run_id":"…","autopilot_id":"…","trigger_id":"…"}`
@@ -259,7 +259,7 @@ When `MULTICA_PUBLIC_URL` is set on the server (e.g. `https://multica.example.co
 the trigger response includes an absolute `webhook_url` and the UI shows a
 ready-to-copy URL. Without it, the UI composes the URL from the client's
 API origin — which is fine for desktop and same-origin web, but not for
-custom self-hosted reverse proxies. Multica deliberately does not derive
+custom self-hosted reverse proxies. MultiAgent deliberately does not derive
 the public host from `Host` / `X-Forwarded-Host` headers so a misconfigured
 reverse proxy cannot trick the server into minting webhook URLs pointing at
 an attacker-controlled host.

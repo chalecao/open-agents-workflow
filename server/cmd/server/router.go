@@ -381,7 +381,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	h.DaemonTokenCache = daemonTokenCache
 	h.MembershipCache = auth.NewMembershipCache(rdb)
 
-	// Cloud PAT verifier: validates mcn_ tokens against Multica Cloud
+	// Cloud PAT verifier: validates mcn_ tokens against MultiAgent Cloud
 	// Fleet. Returns nil when no Fleet URL is configured — the Auth /
 	// DaemonAuth middlewares treat nil as "mcn_ not supported" and
 	// reject with 401, instead of falling through to mul_/JWT paths.
@@ -486,11 +486,11 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	// purpose: the bearer token in the URL path IS the credential. Workspace
 	// context is derived from the trigger row, never from request headers.
 	r.Post("/api/webhooks/autopilots/{token}", h.HandleAutopilotWebhook)
-	// GitHub App webhook (no Multica auth — requests are authenticated via
+	// GitHub App webhook (no MultiAgent auth — requests are authenticated via
 	// HMAC-SHA256 signature in the handler) and post-install setup callback.
 	r.Post("/api/webhooks/github", h.HandleGitHubWebhook)
 	r.Get("/api/github/setup", h.GitHubSetupCallback)
-	// Stripe webhook (no Multica auth — Stripe signs the raw body
+	// Stripe webhook (no MultiAgent auth — Stripe signs the raw body
 	// with a shared secret, the multica-cloud upstream verifies. We
 	// only forward the bytes + the Stripe-Signature header; see
 	// HandleCloudBillingStripeWebhook for the rationale).

@@ -250,7 +250,7 @@ func codexStaticModels() []Model {
 // alongside a few explicit version pins. Aliases track whatever the
 // installed CLI considers current (see `resolveModel` in the CLI's
 // packages/core/src/config/models.ts), so new Gemini releases light
-// up without a Multica redeploy. Default is `auto` to match Google's
+// up without a MultiAgent redeploy. Default is `auto` to match Google's
 // recommendation — the CLI picks Pro vs Flash per task and falls back
 // when quota is exhausted.
 func geminiStaticModels() []Model {

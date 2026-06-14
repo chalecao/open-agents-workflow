@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// runtimeMarkerBegin and runtimeMarkerEnd delimit the Multica-managed brief
+// runtimeMarkerBegin and runtimeMarkerEnd delimit the MultiAgent-managed brief
 // inside the runtime config file (CLAUDE.md / AGENTS.md / GEMINI.md). The
 // markers exist so writeRuntimeConfigFile can:
 //
@@ -168,7 +168,7 @@ func runtimeConfigPath(workDir, provider string) string {
 	}
 }
 
-// writeRuntimeConfigFile writes the Multica runtime brief to path without
+// writeRuntimeConfigFile writes the MultiAgent runtime brief to path without
 // clobbering any user-authored content already present. Behaviour by file
 // state:
 //
@@ -220,7 +220,7 @@ func writeRuntimeConfigFile(path, brief string) error {
 	return os.WriteFile(path, []byte(existingStr+runtimeManagedSeparator+block), 0o644)
 }
 
-// locateMarkerBlock finds the [start, end) byte range of the Multica marker
+// locateMarkerBlock finds the [start, end) byte range of the MultiAgent marker
 // block inside content. The returned `end` is one past the block's trailing
 // newline (if any) so callers can splice the block out without leaving an
 // orphan blank line behind.
@@ -260,12 +260,12 @@ func locateMarkerBlock(content string) (start, end int, found bool) {
 	return start, end, true
 }
 
-// CleanupRuntimeConfig excises the Multica marker block from the runtime
+// CleanupRuntimeConfig excises the MultiAgent marker block from the runtime
 // config file for the given provider and restores the file to its exact
 // pre-injection state, byte for byte. The cleanup is the second half of
 // the contract `writeRuntimeConfigFile` establishes: together they must
 // round-trip a user's local repository config across an arbitrary number
-// of Multica runs without ever touching a single non-managed byte.
+// of MultiAgent runs without ever touching a single non-managed byte.
 //
 // Behaviour, mirroring the three Inject states:
 //
@@ -284,7 +284,7 @@ func locateMarkerBlock(content string) (start, end int, found bool) {
 //
 // Required for the local_directory flow (WorkDir is the user's own repo):
 // without this pass, a manual `claude` / `codex` / `gemini` run started by
-// the user inside the same directory after a Multica task would pick up
+// the user inside the same directory after a MultiAgent task would pick up
 // the stale brief and act on the previous task's issue id, trigger
 // comment id, and reply rules. Cloud workspace runs never trigger this
 // pollution because their workdir is daemon scratch that the GC loop
@@ -340,12 +340,12 @@ func CleanupRuntimeConfig(workDir, provider string) error {
 }
 
 // buildMetaSkillContent generates the meta skill markdown that teaches the agent
-// about the Multica runtime environment and available CLI tools.
+// about the MultiAgent runtime environment and available CLI tools.
 func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 	var b strings.Builder
 
-	b.WriteString("# Multica Agent Runtime\n\n")
-	b.WriteString("You are a coding agent in the Multica platform. Use the `multica` CLI to interact with the platform.\n\n")
+	b.WriteString("# MultiAgent Agent Runtime\n\n")
+	b.WriteString("You are a coding agent in the MultiAgent platform. Use the `multica` CLI to interact with the platform.\n\n")
 
 	// Always emit agent identity so the agent knows who it is, even when
 	// dispatched via @mention on an issue assigned to a different agent.
@@ -557,7 +557,7 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 		// that doesn't propagate the user message into its working context
 		// (or a resumed session) still avoids the assignment-task workflow
 		// pointing at an empty issue id.
-		b.WriteString("**This task was triggered by quick-create.** There is NO existing Multica issue. Follow the field and output rules in the user message you just received; ignore the default assignment-task workflow.\n\n")
+		b.WriteString("**This task was triggered by quick-create.** There is NO existing MultiAgent issue. Follow the field and output rules in the user message you just received; ignore the default assignment-task workflow.\n\n")
 		b.WriteString("Hard guardrails (apply even if the user message is missing):\n")
 		b.WriteString("- Run exactly one `multica issue create` invocation, then exit.\n")
 		b.WriteString("- Do NOT call `multica issue get`, `multica issue status`, or `multica issue comment add` for this task — there is no issue to query, transition, or comment on. The platform writes the user's success/failure inbox notification automatically based on whether `multica issue create` succeeded.\n")
@@ -565,7 +565,7 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 	} else if ctx.AutopilotRunID != "" {
 		// Autopilot run_only task: no issue exists, so the agent must not
 		// follow the assignment/comment workflow.
-		b.WriteString("**This task was triggered by an Autopilot in run-only mode.** There is no assigned Multica issue for this run.\n\n")
+		b.WriteString("**This task was triggered by an Autopilot in run-only mode.** There is no assigned MultiAgent issue for this run.\n\n")
 		fmt.Fprintf(&b, "- Autopilot run ID: `%s`\n", ctx.AutopilotRunID)
 		if ctx.AutopilotID != "" {
 			fmt.Fprintf(&b, "- Autopilot ID: `%s`\n", ctx.AutopilotID)
@@ -702,12 +702,12 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 
 	b.WriteString("## Attachments\n\n")
 	b.WriteString("Issues and comments may include file attachments (images, documents, etc.).\n")
-	b.WriteString("When a task includes attachment IDs and you need the files, inspect `multica attachment --help` and use the authenticated CLI path. Do not open Multica resource URLs directly.\n\n")
+	b.WriteString("When a task includes attachment IDs and you need the files, inspect `multica attachment --help` and use the authenticated CLI path. Do not open MultiAgent resource URLs directly.\n\n")
 
 	b.WriteString("## Important: Always Use the `multica` CLI\n\n")
-	b.WriteString("All interactions with Multica platform resources — including issues, comments, attachments, images, files, and any other platform data — **must** go through the `multica` CLI. ")
-	b.WriteString("Do NOT use `curl`, `wget`, or any other HTTP client to access Multica URLs or APIs directly. ")
-	b.WriteString("Multica resource URLs require authenticated access that only the `multica` CLI can provide.\n\n")
+	b.WriteString("All interactions with MultiAgent platform resources — including issues, comments, attachments, images, files, and any other platform data — **must** go through the `multica` CLI. ")
+	b.WriteString("Do NOT use `curl`, `wget`, or any other HTTP client to access MultiAgent URLs or APIs directly. ")
+	b.WriteString("MultiAgent resource URLs require authenticated access that only the `multica` CLI can provide.\n\n")
 	b.WriteString("If you need to perform an operation that is not covered by any existing `multica` command, ")
 	b.WriteString("do NOT attempt to work around it. Instead, post a comment mentioning the workspace owner to request the missing functionality.\n\n")
 

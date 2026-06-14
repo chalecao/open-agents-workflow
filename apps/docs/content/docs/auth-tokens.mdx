@@ -1,11 +1,11 @@
 ---
 title: Authentication and tokens
-description: Multica has three kinds of tokens — one each for the browser, the CLI, and the daemon. When to use which.
+description: MultiAgent has three kinds of tokens — one each for the browser, the CLI, and the daemon. When to use which.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Multica has three kinds of tokens, one for each context: the browser Web UI, the command line and scripts, and the daemon. All three represent the same you, but their scopes and lifetimes differ.
+MultiAgent has three kinds of tokens, one for each context: the browser Web UI, the command line and scripts, and the daemon. All three represent the same you, but their scopes and lifetimes differ.
 
 ## The three tokens
 
@@ -55,7 +55,7 @@ Click **Sign in with Google** and go through the standard OAuth callback. Self-h
 <Callout type="warning">
 **The full PAT is displayed exactly once when it's created.** After you refresh or close the dialog, you won't be able to see it again.
 
-Multica stores only the hash of the PAT in the database — not even the server can retrieve the original. Copy and save it immediately. If you lose it, your only option is to revoke it and create a new one.
+MultiAgent stores only the hash of the PAT in the database — not even the server can retrieve the original. Copy and save it immediately. If you lose it, your only option is to revoke it and create a new one.
 </Callout>
 
 **Viewing** existing PATs (name, creation time, last-used time — **not** the full token) lives under Settings → Personal Access Tokens.

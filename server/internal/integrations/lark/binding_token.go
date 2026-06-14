@@ -58,7 +58,7 @@ type InstallerBinder interface {
 type InstallerBindParams struct {
 	WorkspaceID    pgtype.UUID
 	InstallationID pgtype.UUID
-	MulticaUserID  pgtype.UUID // the installer's Multica account
+	MulticaUserID  pgtype.UUID // the installer's MultiAgent account
 	LarkOpenID     OpenID      // the installer's per-installation open_id
 }
 
@@ -129,7 +129,7 @@ func (s *BindingTokenService) Mint(ctx context.Context, workspaceID, installatio
 //     oracle for replay races.
 //
 //   - ErrBindingAlreadyAssigned: a binding already exists for this
-//     (installation, open_id), pointing at a DIFFERENT Multica user.
+//     (installation, open_id), pointing at a DIFFERENT MultiAgent user.
 //     The token is NOT consumed in this case — we roll back so the
 //     correct holder of the existing binding is not disrupted and
 //     ops can still revoke the surplus token explicitly. Account
@@ -262,7 +262,7 @@ var ErrBindingTokenInvalid = errors.New("binding token invalid or expired")
 
 // ErrBindingAlreadyAssigned is returned by RedeemAndBind when a
 // lark_user_binding row already exists for the (installation,
-// open_id) pair and points at a different Multica user. Account
+// open_id) pair and points at a different MultiAgent user. Account
 // transfer must go through an explicit unbind flow; a binding token
 // cannot be used to grab an already-bound open_id from another user.
 var ErrBindingAlreadyAssigned = errors.New("lark open_id is already bound to a different user")

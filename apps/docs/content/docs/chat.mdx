@@ -42,7 +42,7 @@ Agents run in a **fully sandboxed** mode inside a conversation.
 
 Chat maintains multi-turn context via **provider session resumption** — the agent establishes a provider session on its first reply (for example, a Claude session), and the session ID is stored. On the next message, the task dispatch passes that ID back so the agent **resumes from where it left off** without re-reading history every time.
 
-If **one turn fails**, Multica looks up the previous task that had established a session ID (whether that task succeeded or failed) and tries to resume — a single failure in the middle does not drop the memory of the whole conversation.
+If **one turn fails**, MultiAgent looks up the previous task that had established a session ID (whether that task succeeded or failed) and tries to resume — a single failure in the middle does not drop the memory of the whole conversation.
 
 Note: not every provider actually implements session resumption — see the [**Providers Matrix**](/providers) for support status.
 

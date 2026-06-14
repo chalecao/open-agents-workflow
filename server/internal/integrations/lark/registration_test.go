@@ -81,7 +81,7 @@ func TestRegistrationClient_Begin_HappyPath(t *testing.T) {
 	})
 
 	c := NewRegistrationClient(RegistrationConfig{Domain: fake.URL()})
-	res, err := c.Begin(context.Background(), "Ada - Multica", "")
+	res, err := c.Begin(context.Background(), "Ada - MultiAgent", "")
 	if err != nil {
 		t.Fatalf("Begin: %v", err)
 	}
@@ -114,10 +114,10 @@ func TestRegistrationClient_Begin_HappyPath(t *testing.T) {
 		t.Errorf("qr source=%q want go-sdk/multica", q.Get("source"))
 	}
 	// The name preset pre-fills the Lark PersonalAgent creation form so
-	// the bot defaults to "<agent> - Multica" rather than the
+	// the bot defaults to "<agent> - MultiAgent" rather than the
 	// auto-generated "{用户姓名}的智能助手".
-	if q.Get("name") != "Ada - Multica" {
-		t.Errorf("qr name=%q want %q", q.Get("name"), "Ada - Multica")
+	if q.Get("name") != "Ada - MultiAgent" {
+		t.Errorf("qr name=%q want %q", q.Get("name"), "Ada - MultiAgent")
 	}
 }
 

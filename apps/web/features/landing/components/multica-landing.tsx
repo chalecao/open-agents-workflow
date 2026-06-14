@@ -13,8 +13,8 @@ export function MulticaLanding() {
       <div className="flex max-w-2xl flex-col items-center gap-8 text-center">
         <Link href="/" className="flex items-center gap-2.5">
           <MulticaIcon className="size-6 text-[#0a0d12]" noSpin />
-          <span className="text-[20px] font-semibold tracking-[0.04em] lowercase text-[#0a0d12]">
-            multica
+          <span className="text-[20px] font-semibold tracking-[0.04em] text-[#0a0d12]">
+            MultiAgent
           </span>
         </Link>
 

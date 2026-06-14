@@ -58,10 +58,10 @@ multica squad member add <squad-id> --member-id <agent-or-user-uuid> --type agen
 
 ## How a squad-assigned issue runs
 
-When a non-Backlog issue is assigned to a squad, Multica immediately enqueues a `task` for the **leader agent** (not for every member). The flow then looks like this:
+When a non-Backlog issue is assigned to a squad, MultiAgent immediately enqueues a `task` for the **leader agent** (not for every member). The flow then looks like this:
 
 1. **Leader claims the task.** The agent runtime picks up the task on its next poll, same as any other agent assignment.
-2. **Leader is briefed.** On claim, Multica appends three sections to the leader's system prompt — see [What the leader sees on every turn](#what-the-leader-sees-on-every-turn) below.
+2. **Leader is briefed.** On claim, MultiAgent appends three sections to the leader's system prompt — see [What the leader sees on every turn](#what-the-leader-sees-on-every-turn) below.
 3. **Leader posts one delegation comment.** The comment `@`-mentions the chosen member(s) using the exact mention markdown from the roster — that mention triggers a new `task` for each mentioned agent.
 4. **Leader records its evaluation** via `multica squad activity <issue-id> action --reason "..."`. This writes an entry to the issue's activity timeline so humans can see the leader actually evaluated the trigger.
 5. **Leader stops.** The leader does not do the implementation itself. When the delegated member posts back, the leader is re-triggered to read the update and either delegate the next step, escalate, or stay silent.

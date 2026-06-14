@@ -1,7 +1,7 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 import { ArrowUpRight } from "lucide-react";
 
-// Docs-local stateless Multica mark — matches @multica/ui's MulticaIcon
+// Docs-local stateless MultiAgent mark — matches @multica/ui's MultiAgentIcon
 // visually (same 8-pointed-asterisk clip-path), but without useState/
 // useEffect so it's safe to render from Server Components such as
 // layout.config.tsx / layout.tsx. Keep in sync with
@@ -15,7 +15,7 @@ const MULTICA_CLIP = `polygon(
   0% 55%, 37.9% 55%, 11.1% 81.8%, 18.2% 88.9%
 )`;
 
-function MulticaMark() {
+function MultiAgentMark() {
   return (
     <span className="inline-block size-[1em]" aria-hidden="true">
       <span
@@ -43,7 +43,7 @@ function GitHubMark() {
 }
 
 // External links shown at the top of the sidebar (and in the top nav on
-// desktop). Leading icon = brand identity (GitHub mark / Multica asterisk);
+// desktop). Leading icon = brand identity (GitHub mark / MultiAgent asterisk);
 // trailing ArrowUpRight = "opens externally" glyph, same pattern as
 // `packages/views/layout/help-launcher.tsx` from PR #1560.
 const externalLinkText = (label: string) => (
@@ -56,7 +56,7 @@ const externalLinkText = (label: string) => (
 export const baseOptions: BaseLayoutProps = {
   nav: {
     title: (
-      <span className="font-semibold text-base">Multica Docs</span>
+      <span className="font-semibold text-base">MultiAgent Docs</span>
     ),
   },
   links: [
@@ -67,8 +67,8 @@ export const baseOptions: BaseLayoutProps = {
       external: true,
     },
     {
-      icon: <MulticaMark />,
-      text: externalLinkText("Multica"),
+      icon: <MultiAgentMark />,
+      text: externalLinkText("MultiAgent"),
       url: "https://multica.ai",
       external: true,
     },

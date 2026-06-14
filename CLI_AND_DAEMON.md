@@ -1,6 +1,6 @@
 # CLI and Agent Daemon Guide
 
-The `multica` CLI connects your local machine to Multica. It handles authentication, workspace management, issue tracking, and runs the agent daemon that executes AI tasks locally.
+The `multica` CLI connects your local machine to MultiAgent. It handles authentication, workspace management, issue tracking, and runs the agent daemon that executes AI tasks locally.
 
 ## Installation
 
@@ -93,7 +93,7 @@ Removes the stored authentication token.
 
 ## Agent Daemon
 
-The daemon is the local agent runtime. It detects available AI CLIs on your machine, registers them with the Multica server, and executes tasks when agents are assigned work.
+The daemon is the local agent runtime. It detects available AI CLIs on your machine, registers them with the MultiAgent server, and executes tasks when agents are assigned work.
 
 ### Start
 
@@ -221,11 +221,11 @@ Agent-specific overrides:
 | `MULTICA_KIRO_PATH` | Custom path to the `kiro-cli` binary |
 | `MULTICA_KIRO_MODEL` | Override the Kiro model used |
 
-`MULTICA_CLAUDE_ARGS` and `MULTICA_CODEX_ARGS` are parsed with POSIX shellword quoting, so values such as `--model "gpt-5.1 codex" --sandbox read-only` are split like a shell command line. Agent arguments are applied in this order: hardcoded Multica defaults, daemon-wide env defaults, then per-agent `custom_args` from the task.
+`MULTICA_CLAUDE_ARGS` and `MULTICA_CODEX_ARGS` are parsed with POSIX shellword quoting, so values such as `--model "gpt-5.1 codex" --sandbox read-only` are split like a shell command line. Agent arguments are applied in this order: hardcoded MultiAgent defaults, daemon-wide env defaults, then per-agent `custom_args` from the task.
 
 ### Self-Hosted Server
 
-When connecting to a self-hosted Multica instance, the easiest approach is:
+When connecting to a self-hosted MultiAgent instance, the easiest approach is:
 
 ```bash
 # One command — configures for localhost, authenticates, starts daemon
@@ -585,7 +585,7 @@ multica issue list --project <project-id>
 ## Setup
 
 ```bash
-# One-command setup for Multica Cloud: configure, authenticate, and start the daemon
+# One-command setup for MultiAgent Cloud: configure, authenticate, and start the daemon
 multica setup
 
 # For local self-hosted deployments
@@ -598,7 +598,7 @@ multica setup self-host --port 9090 --frontend-port 4000
 multica setup self-host --server-url https://api.example.com --app-url https://app.example.com
 ```
 
-`multica setup` configures the CLI, opens your browser for authentication, and starts the daemon — all in one step. Use `multica setup self-host` to connect to a self-hosted server instead of Multica Cloud.
+`multica setup` configures the CLI, opens your browser for authentication, and starts the daemon — all in one step. Use `multica setup self-host` to connect to a self-hosted server instead of MultiAgent Cloud.
 
 ## Configuration
 

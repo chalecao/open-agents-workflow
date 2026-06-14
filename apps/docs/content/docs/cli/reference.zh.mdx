@@ -1,9 +1,9 @@
 ---
 title: CLI Reference
-description: Complete command reference for the Multica CLI and agent daemon.
+description: Complete command reference for the MultiAgent CLI and agent daemon.
 ---
 
-The `multica` CLI connects your local machine to Multica. It handles authentication, workspace management, issue tracking, and runs the agent daemon that executes AI tasks locally.
+The `multica` CLI connects your local machine to MultiAgent. It handles authentication, workspace management, issue tracking, and runs the agent daemon that executes AI tasks locally.
 
 ## Authentication
 
@@ -41,7 +41,7 @@ Removes the stored authentication token.
 
 ## Agent Daemon
 
-The daemon is the local agent runtime. It detects available AI CLIs on your machine, registers them with the Multica server, and executes tasks when agents are assigned work.
+The daemon is the local agent runtime. It detects available AI CLIs on your machine, registers them with the MultiAgent server, and executes tasks when agents are assigned work.
 
 ### Start
 
@@ -149,7 +149,7 @@ Agent-specific overrides:
 
 ### Self-Hosted Server
 
-When connecting to a self-hosted Multica instance, point the CLI to your server before logging in:
+When connecting to a self-hosted MultiAgent instance, point the CLI to your server before logging in:
 
 ```bash
 export MULTICA_APP_URL=https://app.example.com

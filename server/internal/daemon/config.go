@@ -88,7 +88,7 @@ type Config struct {
 	GCOrphanTTL                    time.Duration         // clean orphan dirs with no meta, or dirs whose issue gc-check returns 404, once they exceed this age (default: 72h). The 404 path uses the same TTL — a scoped-down token can't instantly wipe live workspaces.
 	GCArtifactTTL                  time.Duration         // when a task has been completed for at least this long but its issue is still open, drop regenerable artifacts (default: 12h, set 0 to disable)
 	GCArtifactPatterns             []string              // basename patterns whose subtrees are removed during artifact cleanup (default: node_modules, .next, .turbo)
-	AutoUpdateEnabled              bool                  // periodically check for a newer CLI release and self-update when idle (default: true on Multica Cloud, false on self-host)
+	AutoUpdateEnabled              bool                  // periodically check for a newer CLI release and self-update when idle (default: true on MultiAgent Cloud, false on self-host)
 	AutoUpdateCheckInterval        time.Duration         // how often the auto-update loop polls for a new release (default: 6h)
 	PollInterval                   time.Duration
 	HeartbeatInterval              time.Duration
@@ -408,7 +408,7 @@ func LoadConfig(overrides Overrides) (Config, error) {
 
 	// Auto-update config: default -> env override -> CLI override.
 	//
-	// Default is opt-in on Multica Cloud (api.multica.ai) and opt-out for
+	// Default is opt-in on MultiAgent Cloud (api.multica.ai) and opt-out for
 	// self-hosted instances. Self-host operators frequently run a fork with
 	// their own patches, and silently upgrading their daemon to an upstream
 	// GitHub release would clobber that work; they also commonly stay on an
@@ -466,14 +466,14 @@ func LoadConfig(overrides Overrides) (Config, error) {
 	}, nil
 }
 
-// officialCloudHost is the hostname of Multica's hosted cloud. It's the only
+// officialCloudHost is the hostname of MultiAgent's hosted cloud. It's the only
 // origin we treat as "official" for the auto-update default — staging,
 // preview, and any future *.multica.ai subdomains are deliberately excluded
 // so they inherit the safer self-host default until explicitly opted in.
 const officialCloudHost = "api.multica.ai"
 
 // isOfficialCloudServer reports whether the resolved server base URL points
-// at Multica's hosted cloud. Used to pick the auto-update default: cloud
+// at MultiAgent's hosted cloud. Used to pick the auto-update default: cloud
 // users run a server that publishes the matching CLI release, so opt-in
 // self-update is safe; self-host users may run a fork or pin to an older
 // server, so the default flips to off. Matching is host-only and

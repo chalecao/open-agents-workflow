@@ -167,7 +167,7 @@ type RedeemLarkBindingTokenResponse struct {
 // path that writes a lark_user_binding row from user-driven action.
 // The redeemer's identity is taken from the session, not the token,
 // so a stolen token cannot bind a Lark open_id to an attacker's
-// Multica account. The token only proves "this open_id requested
+// MultiAgent account. The token only proves "this open_id requested
 // binding" — combining it with the logged-in user is what creates
 // the (open_id ↔ user) mapping.
 //
@@ -207,7 +207,7 @@ func (h *Handler) RedeemLarkBindingToken(w http.ResponseWriter, r *http.Request)
 		case errors.Is(err, lark.ErrBindingTokenInvalid):
 			writeError(w, http.StatusGone, "binding token invalid or expired")
 		case errors.Is(err, lark.ErrBindingAlreadyAssigned):
-			writeError(w, http.StatusConflict, "this Lark account is already bound to a different Multica user")
+			writeError(w, http.StatusConflict, "this Lark account is already bound to a different MultiAgent user")
 		case errors.Is(err, lark.ErrBindingNotWorkspaceMember):
 			writeError(w, http.StatusForbidden, "binding refused (are you a workspace member?)")
 		default:
@@ -236,7 +236,7 @@ type BeginLarkInstallResponse struct {
 
 // BeginLarkInstall (POST /api/workspaces/{id}/lark/install/begin)
 // opens a new device-flow registration session against Lark. Admin-only
-// at the router. The agent_id query param picks which Multica Agent
+// at the router. The agent_id query param picks which MultiAgent Agent
 // the new Bot will be bound to; the agent must belong to this
 // workspace (RegistrationService re-checks that defense-in-depth).
 //

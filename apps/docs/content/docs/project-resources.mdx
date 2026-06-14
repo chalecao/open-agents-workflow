@@ -15,7 +15,7 @@ A project is no longer just a label. It is a small **resource container**:
 - A resource has a `resource_type` (e.g. `github_repo`, `local_directory`) and a `resource_ref` (a JSON payload typed by `resource_type`).
 - New resource types add a string + a handler. **No schema migration. No frontend rewrite.**
 
-This shape is intentional — it's the same pattern Multica already uses for agent providers: a `type` discriminator and a typed payload. It keeps the schema stable so adding "Notion page", "Google Doc", "uploaded file", or "external URL" later is a small, additive change.
+This shape is intentional — it's the same pattern MultiAgent already uses for agent providers: a `type` discriminator and a typed payload. It keeps the schema stable so adding "Notion page", "Google Doc", "uploaded file", or "external URL" later is a small, additive change.
 
 Today two resource types ship: [`github_repo`](#resource-type-github_repo) (clone-per-task into an isolated worktree) and [`local_directory`](#resource-type-local_directory) (run directly inside a folder on a specific daemon's machine).
 
@@ -50,7 +50,7 @@ For repos that can't reasonably be re-cloned per task — multi-gigabyte game ch
 }
 ```
 
-The trade-off vs. `github_repo` is intentional: only the bound daemon can pick up tasks against the directory, and tasks on the same directory run **serially** instead of in parallel. In exchange you keep your existing checkout, your existing branch, your existing dirty state — Multica never re-clones it.
+The trade-off vs. `github_repo` is intentional: only the bound daemon can pick up tasks against the directory, and tasks on the same directory run **serially** instead of in parallel. In exchange you keep your existing checkout, your existing branch, your existing dirty state — MultiAgent never re-clones it.
 
 ### When to pick `local_directory` over `github_repo`
 
@@ -104,7 +104,7 @@ The path you attach must clear both an attach-time and a per-task validation. Bo
 - Cannot be a system root or an entire user profile — `/`, `/Users`, `/home`, `/root`, `/etc`, `/tmp`, `/var`, `/usr`, `/opt`, `/Users/Shared`, your own `$HOME`, any Windows drive root (`C:\`, `D:\`, …), or `C:\Users` / `C:\ProgramData` / `C:\Program Files` / `C:\Program Files (x86)` / `C:\Windows`.
 - A symlink that resolves to any of the above is rejected, and so is the canonical form of an OS-aliased path (e.g. on macOS, typing `/private/tmp` is rejected the same way as `/tmp`).
 
-The blacklist is intentionally aggressive — picking your home directory would put Multica's runtime files at the root of your account, which is never what you want. Pick a sub-folder (typically your actual project checkout) instead.
+The blacklist is intentionally aggressive — picking your home directory would put MultiAgent's runtime files at the root of your account, which is never what you want. Pick a sub-folder (typically your actual project checkout) instead.
 
 ### One per (project, daemon)
 
@@ -128,13 +128,13 @@ When a task is dispatched on an issue whose project has a `local_directory` boun
 1. Re-validates the path (rules above).
 2. Acquires a per-directory lock keyed on the symlink-resolved real path — so two routes to the same folder (one via a symlink, one direct) still serialise.
 3. Writes the agent's `CLAUDE.md` / `AGENTS.md` (and `.multica/project/resources.json`) **into the user's directory**. The agent works there, just as if you'd opened the folder yourself.
-4. Keeps Multica's runtime artefacts (`output/`, `logs/`, `.gc_meta.json`) in a separate envRoot **outside** the user's directory.
+4. Keeps MultiAgent's runtime artefacts (`output/`, `logs/`, `.gc_meta.json`) in a separate envRoot **outside** the user's directory.
 
 If a second task for the same directory arrives while the first is running, it parks with status **Waiting for local directory** (等待本地目录释放). The status is visible everywhere the task is — the chat task pill, the agent banner, the execution log, and the activity indicator — and the parked task counts toward the agent's "queued" presence. Cancelling the parked task releases its slot immediately; cancelling the running task lets the next one promote.
 
 The wait is not a timeout — a parked task stays parked until either the lock releases or the user / agent cancels it.
 
-### What Multica will and won't touch in your directory
+### What MultiAgent will and won't touch in your directory
 
 - **Will write** `CLAUDE.md` / `AGENTS.md` (or the equivalent for your agent's provider) and `.multica/project/resources.json` at the directory root, so the agent has its meta-skill and resource list. Add these to your `.gitignore` if you don't want them committed.
 - **Will write** whatever code edits the agent decides to make — exactly the same way as if you'd run the agent locally yourself.

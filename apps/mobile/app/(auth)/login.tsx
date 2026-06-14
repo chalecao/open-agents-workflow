@@ -44,7 +44,7 @@ export default function Login() {
             <MulticaLogo size={32} />
             <View className="gap-1 items-center">
               <Text className="text-2xl font-semibold text-foreground">
-                Sign in to Multica
+                Sign in to MultiAgent
               </Text>
               <Text className="text-sm text-muted-foreground text-center">
                 Enter your email and we&apos;ll send you a verification code.

@@ -91,7 +91,7 @@ type LarkOutcomeReplier struct {
 }
 
 // OutcomeReplierConfig wires the production replier. PublicURL is the
-// Multica HTTP host the user clicks into to redeem the binding token
+// MultiAgent HTTP host the user clicks into to redeem the binding token
 // (e.g. https://multica.example); empty means the binding flow can
 // only log the open_id, not produce a clickable card. The other
 // fields default at construction.
@@ -137,7 +137,7 @@ func NewLarkOutcomeReplier(cfg OutcomeReplierConfig) OutcomeReplier {
 		queries:      cfg.Queries,
 		publicURL:    strings.TrimRight(cfg.PublicURL, "/"),
 		bindingPath:  bindingPath,
-		noticeHeader: "Multica",
+		noticeHeader: "MultiAgent",
 		log:          log,
 	}
 }
@@ -223,7 +223,7 @@ func (r *LarkOutcomeReplier) sendBindingPrompt(ctx context.Context, inst db.Lark
 // as a plain text message. We deliberately send text rather than an
 // interactive card so the confirmation flows inline with the rest of
 // the Lark conversation — consistent with how chat replies render
-// after MUL-2671's plain-text refactor. The link to Multica is
+// after MUL-2671's plain-text refactor. The link to MultiAgent is
 // included on its own line so Lark's auto-linker turns it into a
 // tappable URL.
 func (r *LarkOutcomeReplier) sendIssueCreated(ctx context.Context, inst db.LarkInstallation, msg InboundMessage, res DispatchResult) error {

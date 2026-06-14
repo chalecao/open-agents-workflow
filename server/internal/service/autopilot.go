@@ -518,13 +518,30 @@ func (s *AutopilotService) dispatchOneHandoff(ctx context.Context, ap db.Autopil
 		return nil
 	}
 
-	ruleSet, err := DecodeHandoffRuleSet(ap.HandoffRules)
+	// DecodeHandoffRuleSet only returns the rule array — operator and
+	// comment template live in their own columns (handoff_rules_operator /
+	// handoff_comment_template) and are read off the row here. Building a
+	// local HandoffRuleSet with the full set so the existing
+	// ValidateHandoffRuleSet / MatchesHandoffRuleSet code path can stay
+	// shape-agnostic.
+	decoded, err := DecodeHandoffRuleSet(ap.HandoffRules)
 	if err != nil {
 		slog.Warn("handoff autopilot has unparseable rules, skipping",
 			"autopilot_id", util.UUIDToString(ap.ID),
 			"error", err,
 		)
 		return nil
+	}
+	operator := HandoffRulesOperator(ap.HandoffRulesOperator)
+	if operator == "" {
+		// The DB column has a NOT NULL DEFAULT 'all', but defense in depth
+		// for legacy rows (or a hand-edited DB) is cheap.
+		operator = HandoffRulesAll
+	}
+	ruleSet := HandoffRuleSet{
+		Operator:        operator,
+		Rules:           decoded.Rules,
+		CommentTemplate: ap.HandoffCommentTemplate.String,
 	}
 	if validationErr := ValidateHandoffRuleSet(ruleSet); validationErr != nil {
 		slog.Warn("handoff autopilot has invalid rules, skipping",

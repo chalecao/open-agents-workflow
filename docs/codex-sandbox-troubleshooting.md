@@ -68,7 +68,7 @@ codex sandbox: falling back to danger-full-access on macOS
 From the host shell (outside the sandbox):
 
 ```bash
-# Is the Multica API reachable at all?
+# Is the MultiAgent API reachable at all?
 curl -sSf https://multica-api.copilothub.ai/healthz
 ```
 

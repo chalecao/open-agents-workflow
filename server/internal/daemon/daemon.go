@@ -1735,7 +1735,7 @@ func (d *Daemon) handleUpdate(ctx context.Context, runtimeID string, update *Pen
 		d.logger.Info("refusing CLI self-update: daemon is managed by Desktop", "runtime_id", runtimeID, "update_id", update.ID)
 		d.reportUpdateResult(ctx, runtimeID, update.ID, map[string]any{
 			"status": "failed",
-			"error":  "CLI is managed by Multica Desktop — update the Desktop app to upgrade the CLI",
+			"error":  "CLI is managed by MultiAgent Desktop — update the Desktop app to upgrade the CLI",
 		})
 		return
 	}
@@ -2746,7 +2746,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 	// already disabled above (see localAssignment == nil), and the brief
 	// would otherwise live on inside the user's repository — a subsequent
 	// manual `claude` / `codex` / `gemini` run in that directory would pick
-	// up stale Multica instructions (issue id, trigger comment id, reply
+	// up stale MultiAgent instructions (issue id, trigger comment id, reply
 	// rules) and start acting on the previous task's context. Excise the
 	// marker block on the way out instead.
 	if env.LocalDirectory {
@@ -2771,12 +2771,12 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 	prompt := BuildPrompt(task, provider)
 
 	// Pass the daemon's auth credentials and context so the spawned agent CLI
-	// can call the Multica API and the local daemon (e.g. `multica repo checkout`).
+	// can call the MultiAgent API and the local daemon (e.g. `multica repo checkout`).
 	// MULTICA_TASK_SLOT is allocated from the daemon-wide concurrency pool, not
 	// per-agent. When one daemon hosts multiple agents, slots index shared
 	// daemon-level resources such as GPUs.
 	// MULTICA_TOKEN is the credential the agent process will use to call the
-	// Multica API. Prefer the task-scoped token the server minted at claim
+	// MultiAgent API. Prefer the task-scoped token the server minted at claim
 	// time — that token is bound to (agent, task) and the auth middleware
 	// rejects it on owner-only endpoints (e.g. `/api/agents/{id}/env`), so
 	// the agent cannot use it to read another agent's secrets. Falls back

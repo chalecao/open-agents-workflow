@@ -1,11 +1,11 @@
 ---
 title: Mobile app (iOS)
-description: How to build the open-source Multica iOS app on your own iPhone — no App Store yet.
+description: How to build the open-source MultiAgent iOS app on your own iPhone — no App Store yet.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Multica's iOS client is open-source and lives in the [main repo](https://github.com/multica-ai/multica) alongside web, desktop, and backend. It isn't on the App Store yet — until that changes, anyone who wants it on their iPhone builds from source. The build takes about 10–20 minutes the first time and ~2 minutes after that, and it talks to the same backend as [multica.ai](https://multica.ai) so your existing account just works.
+MultiAgent's iOS client is open-source and lives in the [main repo](https://github.com/multica-ai/multica) alongside web, desktop, and backend. It isn't on the App Store yet — until that changes, anyone who wants it on their iPhone builds from source. The build takes about 10–20 minutes the first time and ~2 minutes after that, and it talks to the same backend as [multica.ai](https://multica.ai) so your existing account just works.
 
 <Callout type="info">
 This page is for **personal use**. App developers should read [`apps/mobile/README.md`](https://github.com/multica-ai/multica/blob/main/apps/mobile/README.md) in the repo — it covers the dev / staging variants and the full script matrix.
@@ -16,7 +16,7 @@ This page is for **personal use**. App developers should read [`apps/mobile/READ
 - A **Mac** with Xcode installed (free from the App Store).
 - A free **Apple ID** added under Xcode → Settings → Accounts. A paid Apple Developer Program account is optional and only extends the 7-day signing window to 1 year — see [7-day limit](#7-day-signing-limit) below.
 - An **iPhone** connected via USB cable, with [Developer Mode enabled](https://docs.expo.dev/guides/ios-developer-mode/) (Settings → Privacy & Security → Developer Mode).
-- The Multica source code checked out:
+- The MultiAgent source code checked out:
 
   ```bash
   git clone https://github.com/multica-ai/multica.git
@@ -48,7 +48,7 @@ The only way to extend this is an **Apple Developer Program account** ($99/yr fr
 
 ## Updating
 
-There is no auto-update yet. When the Multica codebase moves forward, pull and rebuild:
+There is no auto-update yet. When the MultiAgent codebase moves forward, pull and rebuild:
 
 ```bash
 git pull
@@ -60,7 +60,7 @@ Subsequent builds are fast because Xcode caches the native compile.
 
 ## Why no App Store yet
 
-The iOS app is still moving fast — the team prefers ship-and-iterate over App Store review cycles right now. A TestFlight beta is the most likely next step before a full App Store release. Until then, the self-build path above is the only way to use Multica on iOS.
+The iOS app is still moving fast — the team prefers ship-and-iterate over App Store review cycles right now. A TestFlight beta is the most likely next step before a full App Store release. Until then, the self-build path above is the only way to use MultiAgent on iOS.
 
 If you'd like to be notified when TestFlight opens, watch the [GitHub repo](https://github.com/multica-ai/multica).
 

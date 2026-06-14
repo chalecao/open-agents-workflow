@@ -7,7 +7,7 @@ allowed-tools: Bash(multica *)
 
 # Mentioning & Delegating
 
-This skill states WHAT a mention link does in the Multica backend, traced to
+This skill states WHAT a mention link does in the MultiAgent backend, traced to
 source. WHETHER to mention at all — loop avoidance, staying silent on
 acknowledgements — is in your runtime brief's Mentions section; follow that and
 do not repeat it here.

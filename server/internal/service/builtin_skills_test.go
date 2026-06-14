@@ -167,7 +167,7 @@ func TestWorkingOnIssuesSkillCoversIssueLoopContracts(t *testing.T) {
 		t.Errorf("user-invocable = %q, want false (issue workflow guidance triggers from context)", got)
 	}
 	if got := strings.TrimSpace(fm["allowed-tools"]); !strings.Contains(got, "Bash(multica *)") {
-		t.Errorf("allowed-tools = %q, want access to the Multica CLI", got)
+		t.Errorf("allowed-tools = %q, want access to the MultiAgent CLI", got)
 	}
 
 	// Contract anchors only — exact file:line citations live in the skill's
@@ -176,7 +176,7 @@ func TestWorkingOnIssuesSkillCoversIssueLoopContracts(t *testing.T) {
 	mustContain := []string{
 		"multica issue pull-requests <issue-id> --output json",
 		"Default for code-changing issue work",
-		"open or update a PR before posting the final Multica issue comment",
+		"open or update a PR before posting the final MultiAgent issue comment",
 		"This is a default, not",
 		"Use a routable issue key in the PR title, body, or branch",
 		"include the PR URL when a PR exists",
@@ -220,7 +220,7 @@ func TestSkillImportingSkillCoversWorkspaceImportContracts(t *testing.T) {
 		t.Errorf("user-invocable = %q, want false (skill import guidance triggers from context)", got)
 	}
 	if got := strings.TrimSpace(fm["allowed-tools"]); !strings.Contains(got, "Bash(multica *)") {
-		t.Errorf("allowed-tools = %q, want access to the Multica CLI", got)
+		t.Errorf("allowed-tools = %q, want access to the MultiAgent CLI", got)
 	}
 
 	mustContain := []string{
@@ -275,7 +275,7 @@ func TestCreatingAgentsSkillCoversAgentCreationContracts(t *testing.T) {
 		t.Errorf("user-invocable = %q, want false (agent creation guidance triggers from context)", got)
 	}
 	if got := strings.TrimSpace(fm["allowed-tools"]); !strings.Contains(got, "Bash(multica *)") {
-		t.Errorf("allowed-tools = %q, want access to the Multica CLI", got)
+		t.Errorf("allowed-tools = %q, want access to the MultiAgent CLI", got)
 	}
 
 	mustContain := []string{
@@ -333,7 +333,7 @@ func TestSquadsSkillCoversLeaderRoutingContract(t *testing.T) {
 		t.Errorf("user-invocable = %q, want false (squad guidance triggers from context)", got)
 	}
 	if got := strings.TrimSpace(fm["allowed-tools"]); !strings.Contains(got, "Bash(multica *)") {
-		t.Errorf("allowed-tools = %q, want access to the Multica CLI", got)
+		t.Errorf("allowed-tools = %q, want access to the MultiAgent CLI", got)
 	}
 
 	mustContain := []string{
@@ -367,7 +367,7 @@ func TestAutopilotsSkillCoversDispatchAndSideEffects(t *testing.T) {
 		t.Errorf("user-invocable = %q, want false", got)
 	}
 	if got := strings.TrimSpace(fm["allowed-tools"]); !strings.Contains(got, "Bash(multica *)") {
-		t.Errorf("allowed-tools = %q, want access to the Multica CLI", got)
+		t.Errorf("allowed-tools = %q, want access to the MultiAgent CLI", got)
 	}
 
 	mustContain := []string{
@@ -403,7 +403,7 @@ func TestRuntimesAndReposSkillCoversClaimAndCheckoutChain(t *testing.T) {
 		t.Errorf("user-invocable = %q, want false", got)
 	}
 	if got := strings.TrimSpace(fm["allowed-tools"]); !strings.Contains(got, "Bash(multica *)") {
-		t.Errorf("allowed-tools = %q, want access to the Multica CLI", got)
+		t.Errorf("allowed-tools = %q, want access to the MultiAgent CLI", got)
 	}
 
 	mustContain := []string{
@@ -438,7 +438,7 @@ func TestProjectsAndResourcesSkillCoversDurableContext(t *testing.T) {
 		t.Errorf("user-invocable = %q, want false", got)
 	}
 	if got := strings.TrimSpace(fm["allowed-tools"]); !strings.Contains(got, "Bash(multica *)") {
-		t.Errorf("allowed-tools = %q, want access to the Multica CLI", got)
+		t.Errorf("allowed-tools = %q, want access to the MultiAgent CLI", got)
 	}
 
 	mustContain := []string{

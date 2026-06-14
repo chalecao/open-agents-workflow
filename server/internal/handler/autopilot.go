@@ -887,12 +887,27 @@ func (h *Handler) applyHandoffUpdate(
 	// fields the client actually sent. Validating the merged result
 	// catches the common "user cleared rules but left dangling operator"
 	// typo without re-validating unchanged fields.
+	//
+	// DecodeHandoffRuleSet returns the rule array only — operator and
+	// comment template are sourced from their dedicated columns on the
+	// prev row (handoff_rules_operator / handoff_comment_template) so the
+	// candidate's operator/template mirrors what a fresh load of the row
+	// would yield, even if the persisted JSON was authored by an older
+	// build that conflated the columns.
 	prevSet, err := service.DecodeHandoffRuleSet(prev.HandoffRules)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "stored handoff rules are unparseable")
 		return false
 	}
-	candidate := prevSet
+	prevOperator := service.HandoffRulesOperator(prev.HandoffRulesOperator)
+	if prevOperator == "" {
+		prevOperator = service.HandoffRulesAll
+	}
+	candidate := service.HandoffRuleSet{
+		Operator:        prevOperator,
+		Rules:           prevSet.Rules,
+		CommentTemplate: prev.HandoffCommentTemplate.String,
+	}
 	if req.HandoffRules != nil {
 		candidate.Rules = *req.HandoffRules
 	}

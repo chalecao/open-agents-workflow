@@ -1,9 +1,9 @@
-# Multica installer for Windows — one command to get started.
+# MultiAgent installer for Windows — one command to get started.
 #
 # Install CLI (default): connects to multica.ai
 #   irm https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.ps1 | iex
 #
-# Self-host: starts a local Multica server + installs CLI + configures
+# Self-host: starts a local MultiAgent server + installs CLI + configures
 #   $env:MULTICA_MODE="local"; irm https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.ps1 | iex
 #
 
@@ -219,10 +219,10 @@ function Get-InstalledCliVersion {
 # CLI Installation
 # ---------------------------------------------------------------------------
 function Install-CliBinary {
-    Write-Info "Installing Multica CLI from GitHub Releases..."
+    Write-Info "Installing MultiAgent CLI from GitHub Releases..."
 
     if (-not [Environment]::Is64BitOperatingSystem) {
-        Write-Fail "Multica requires a 64-bit Windows installation."
+        Write-Fail "MultiAgent requires a 64-bit Windows installation."
     }
 
     $arch = Get-WindowsCliArch
@@ -300,7 +300,7 @@ function Install-CliBinary {
     Remove-Item $tmpDir -Recurse -Force
 
     Add-ToUserPath $binDir
-    Write-Ok "Multica CLI installed to $binDir\multica.exe"
+    Write-Ok "MultiAgent CLI installed to $binDir\multica.exe"
 }
 
 function Add-ToUserPath {
@@ -336,15 +336,15 @@ function Install-Cli {
         }
 
         if ($isUpToDate) {
-            Write-Ok "Multica CLI is up to date ($currentVer)"
+            Write-Ok "MultiAgent CLI is up to date ($currentVer)"
             return
         }
 
-        Write-Info "Multica CLI $currentVer installed, latest is $latestVer - upgrading..."
+        Write-Info "MultiAgent CLI $currentVer installed, latest is $latestVer - upgrading..."
         Install-CliBinary
 
         $newVer = Get-InstalledCliVersion
-        Write-Ok "Multica CLI upgraded ($currentVer -> $newVer)"
+        Write-Ok "MultiAgent CLI upgraded ($currentVer -> $newVer)"
         return
     }
 
@@ -361,7 +361,7 @@ function Install-Cli {
 function Test-Docker {
     if (-not (Test-CommandExists "docker")) {
         Write-Fail @"
-Docker is not installed. Multica self-hosting requires Docker and Docker Compose.
+Docker is not installed. MultiAgent self-hosting requires Docker and Docker Compose.
 
 Install Docker Desktop for Windows:
   https://docs.docker.com/desktop/install/windows-install/
@@ -383,7 +383,7 @@ After installing Docker, re-run this script with `$env:MULTICA_MODE="local"`.
 # Server setup (self-host / local)
 # ---------------------------------------------------------------------------
 function Install-Server {
-    Write-Info "Setting up Multica server..."
+    Write-Info "Setting up MultiAgent server..."
     $serverRef = Get-SelfHostRef
     Write-Info "Using self-host assets from $serverRef..."
 
@@ -391,7 +391,7 @@ function Install-Server {
         Write-Info "Updating existing installation at $InstallDir..."
         Write-Warn "Any local changes in $InstallDir will be overwritten."
     } else {
-        Write-Info "Cloning Multica repository..."
+        Write-Info "Cloning MultiAgent repository..."
         if (-not (Test-CommandExists "git")) {
             Write-Fail "Git is not installed. Please install git and re-run."
         }
@@ -420,9 +420,9 @@ function Install-Server {
         Write-Ok "Using existing .env"
     }
 
-    Write-Info "Pulling official Multica images..."
+    Write-Info "Pulling official MultiAgent images..."
     Pull-OfficialSelfHostImages
-    Write-Info "Starting Multica services (this may take a few minutes on first run)..."
+    Write-Info "Starting MultiAgent services (this may take a few minutes on first run)..."
     docker compose -f docker-compose.selfhost.yml up -d
 
     Write-Info "Waiting for backend to be ready..."
@@ -439,7 +439,7 @@ function Install-Server {
     }
 
     if ($ready) {
-        Write-Ok "Multica server is running"
+        Write-Ok "MultiAgent server is running"
     } else {
         Write-Warn "Server is still starting. Check logs with:"
         Write-Host "  cd $InstallDir; docker compose -f docker-compose.selfhost.yml logs"
@@ -454,19 +454,19 @@ function Install-Server {
 # ---------------------------------------------------------------------------
 function Start-DefaultInstall {
     Write-Host ""
-    Write-Host "  Multica - Installer" -ForegroundColor White
+    Write-Host "  MultiAgent - Installer" -ForegroundColor White
     Write-Host ""
 
     Install-Cli
 
     Write-Host ""
     Write-Host "  ============================================" -ForegroundColor Green
-    Write-Host "  [OK] Multica CLI is ready!" -ForegroundColor Green
+    Write-Host "  [OK] MultiAgent CLI is ready!" -ForegroundColor Green
     Write-Host "  ============================================" -ForegroundColor Green
     Write-Host ""
     Write-Host "  Next: configure your environment"
     Write-Host ""
-    Write-Host "     multica setup               " -NoNewline; Write-Host "# Connect to Multica Cloud (multica.ai)" -ForegroundColor DarkGray
+    Write-Host "     multica setup               " -NoNewline; Write-Host "# Connect to MultiAgent Cloud (multica.ai)" -ForegroundColor DarkGray
     Write-Host "     multica setup self-host      " -NoNewline; Write-Host "# Connect to a self-hosted server" -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  Self-hosting? Install the server first:"
@@ -479,7 +479,7 @@ function Start-DefaultInstall {
 # ---------------------------------------------------------------------------
 function Start-LocalInstall {
     Write-Host ""
-    Write-Host "  Multica - Self-Host Installer" -ForegroundColor White
+    Write-Host "  MultiAgent - Self-Host Installer" -ForegroundColor White
     Write-Host "  Provisioning server infrastructure + installing CLI"
     Write-Host ""
 
@@ -489,7 +489,7 @@ function Start-LocalInstall {
 
     Write-Host ""
     Write-Host "  ============================================" -ForegroundColor Green
-    Write-Host "  [OK] Multica server is running and CLI is ready!" -ForegroundColor Green
+    Write-Host "  [OK] MultiAgent server is running and CLI is ready!" -ForegroundColor Green
     Write-Host "  ============================================" -ForegroundColor Green
     Write-Host ""
     $frontendPort = Get-SelfHostFrontendPort
@@ -515,7 +515,7 @@ function Start-LocalInstall {
 # ---------------------------------------------------------------------------
 function Start-Stop {
     Write-Host ""
-    Write-Info "Stopping Multica services..."
+    Write-Info "Stopping MultiAgent services..."
 
     if (Test-Path $InstallDir) {
         Push-Location $InstallDir
@@ -527,7 +527,7 @@ function Start-Stop {
         }
         Pop-Location
     } else {
-        Write-Warn "No Multica installation found at $InstallDir"
+        Write-Warn "No MultiAgent installation found at $InstallDir"
     }
 
     if (Test-CommandExists "multica") {

@@ -48,7 +48,7 @@ var contactSalesAllowedCompanySize = []string{
 }
 
 // contactSalesAllowedUseCase mirrors the "How do you plan to use or
-// collaborate with Multica?" dropdown.
+// collaborate with MultiAgent?" dropdown.
 var contactSalesAllowedUseCase = []string{
 	"evaluate",
 	"adopt_team",

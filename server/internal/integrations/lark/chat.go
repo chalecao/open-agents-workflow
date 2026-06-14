@@ -45,7 +45,7 @@ type ChatSessionService interface {
 }
 
 // EnsureChatSessionParams carries the inputs for ChatSessionService.EnsureChatSession.
-// Note `Sender` is the resolved Multica user UUID — the caller has
+// Note `Sender` is the resolved MultiAgent user UUID — the caller has
 // already mapped lark_open_id → user via lark_user_binding.
 type EnsureChatSessionParams struct {
 	WorkspaceID    pgtype.UUID

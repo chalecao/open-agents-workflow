@@ -1,11 +1,11 @@
 ---
 title: 环境变量
-description: self-host Multica 服务器需要配置的环境变量清单。
+description: self-host MultiAgent 服务器需要配置的环境变量清单。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Multica 的 [自部署](/self-host-quickstart) 服务器启动时从环境变量读取配置——数据库、登录、邮件、存储、注册白名单都在这里配。这一页按用途分组给完整清单：每组说清楚**不设会怎样**、**生产必须设哪几个**。Auth 相关那几个怎么真正配见 [登录与注册配置](/auth-setup)。
+MultiAgent 的 [自部署](/self-host-quickstart) 服务器启动时从环境变量读取配置——数据库、登录、邮件、存储、注册白名单都在这里配。这一页按用途分组给完整清单：每组说清楚**不设会怎样**、**生产必须设哪几个**。Auth 相关那几个怎么真正配见 [登录与注册配置](/auth-setup)。
 
 ## 核心 server 环境变量
 
@@ -35,7 +35,7 @@ Multica 的 [自部署](/self-host-quickstart) 服务器启动时从环境变量
 
 ## 怎么配邮件
 
-Multica 支持两种邮件发送通道——[Resend](https://resend.com/) 适合公网部署，SMTP relay 适合内网/自部署。同时设置时 `SMTP_HOST` 优先级高于 `RESEND_API_KEY`。
+MultiAgent 支持两种邮件发送通道——[Resend](https://resend.com/) 适合公网部署，SMTP relay 适合内网/自部署。同时设置时 `SMTP_HOST` 优先级高于 `RESEND_API_KEY`。
 
 ### Resend
 
@@ -76,7 +76,7 @@ Multica 支持两种邮件发送通道——[Resend](https://resend.com/) 适合
 
 ## 怎么配文件存储
 
-Multica 存储用户上传的附件（评论里的图片、文件等）。**优先走 S3**；不配 S3 就回落本地磁盘。
+MultiAgent 存储用户上传的附件（评论里的图片、文件等）。**优先走 S3**；不配 S3 就回落本地磁盘。
 
 ### S3 / S3 兼容存储
 
@@ -132,7 +132,7 @@ API 返回的 `download_url` 在未配置 CloudFront 签名时会指向 `GET /ap
 
 **不直观的点**：`ALLOWED_EMAIL_DOMAINS=company.io` + `ALLOW_SIGNUP=true` 的组合**不是**「允许 company.io 或所有人」，而是**只允许 company.io**。白名单的 AND 语义——决策树详见 [登录与注册配置 → Signup 白名单](/auth-setup#怎么限制谁能注册)。
 
-**邀请流程本身不检查 signup 白名单**——但被邀请人必须先能**登录**才能接受邀请。如果对方已经有 Multica 账号（比如在其他工作区注册过），可以直接接受，不受白名单影响；**如果对方还没注册过**，他们登录的第一步（发送验证码）仍然会过白名单检查，被 `ALLOW_SIGNUP=false` 或 `ALLOWED_EMAILS` / `ALLOWED_EMAIL_DOMAINS` 拒绝的邮箱**无法完成注册，也就没法接受邀请**。
+**邀请流程本身不检查 signup 白名单**——但被邀请人必须先能**登录**才能接受邀请。如果对方已经有 MultiAgent 账号（比如在其他工作区注册过），可以直接接受，不受白名单影响；**如果对方还没注册过**，他们登录的第一步（发送验证码）仍然会过白名单检查，被 `ALLOW_SIGNUP=false` 或 `ALLOWED_EMAILS` / `ALLOWED_EMAIL_DOMAINS` 拒绝的邮箱**无法完成注册，也就没法接受邀请**。
 
 ## 锁死工作区创建
 
@@ -148,7 +148,7 @@ API 返回的 `download_url` 在未配置 CloudFront 签名时会指向 `GET /ap
 2. 管理员登录并创建共享工作区。
 3. 把 `DISABLE_WORKSPACE_CREATION=true` 设上并重启 backend。之后新用户只能通过邀请加入。
 
-如果还想让被邀请的新用户能完成首次注册，保留 `ALLOW_SIGNUP=true`（必要时用 `ALLOWED_EMAIL_DOMAINS` / `ALLOWED_EMAILS` 限定可注册邮箱），只把 `DISABLE_WORKSPACE_CREATION=true` 打开即可；如果同时设 `ALLOW_SIGNUP=false`，连有 pending invite 的邮箱都无法完成首次注册，仅适合所有成员都已有 Multica 账号的实例。
+如果还想让被邀请的新用户能完成首次注册，保留 `ALLOW_SIGNUP=true`（必要时用 `ALLOWED_EMAIL_DOMAINS` / `ALLOWED_EMAILS` 限定可注册邮箱），只把 `DISABLE_WORKSPACE_CREATION=true` 打开即可；如果同时设 `ALLOW_SIGNUP=false`，连有 pending invite 的邮箱都无法完成首次注册，仅适合所有成员都已有 MultiAgent 账号的实例。
 
 ## 速率限制（可选 Redis）
 
@@ -215,17 +215,17 @@ API 返回的 `download_url` 在未配置 CloudFront 签名时会指向 `GET /ap
 **任一必填变量未设时：**
 
 - Settings → GitHub 里 `Connect GitHub` 按钮 **disable**，对 admin 显示「not configured」提示
-- `/api/webhooks/github` 直接返回 **`503 github webhooks not configured`**——secret 没配置时 Multica 拒绝处理任何 webhook 事件，而不是把所有签名当 valid
+- `/api/webhooks/github` 直接返回 **`503 github webhooks not configured`**——secret 没配置时 MultiAgent 拒绝处理任何 webhook 事件，而不是把所有签名当 valid
 
 **可选 `GITHUB_APP_ID` / `GITHUB_APP_PRIVATE_KEY` 未设时：**
 
-- 安装完成后，连接卡片会先短暂显示 `已连接到 unknown`。等 GitHub 的 `installation.created` webhook 到达（通常几秒内），Multica 会把 row 刷成真实的组织/用户名，并通过 realtime 推送让正在打开的 Settings → GitHub 页面无需手动刷新即可更新。
+- 安装完成后，连接卡片会先短暂显示 `已连接到 unknown`。等 GitHub 的 `installation.created` webhook 到达（通常几秒内），MultiAgent 会把 row 刷成真实的组织/用户名，并通过 realtime 推送让正在打开的 Settings → GitHub 页面无需手动刷新即可更新。
 
 **注意：** `GITHUB_WEBHOOK_SECRET` 同时被复用为 install 流程里 state token 的签名密钥，所以运维只需要维护一个 secret。它**不是** GitHub App 的 *Client* secret——Client secret 是 OAuth 用的，和本集成无关。完整配置流程见 [GitHub 集成 → Self-Host 配置](/github-integration#self-host-配置)。
 
 ## 用量统计
 
-默认上报到 Multica 官方 PostHog 实例。不想上报就把 `ANALYTICS_DISABLED=true`。
+默认上报到 MultiAgent 官方 PostHog 实例。不想上报就把 `ANALYTICS_DISABLED=true`。
 
 | 环境变量 | 默认值 | 说明 |
 |---|---|---|

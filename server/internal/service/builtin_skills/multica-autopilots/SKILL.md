@@ -1,11 +1,11 @@
 ---
 name: multica-autopilots
-description: Use when creating, updating, inspecting, triggering, or debugging Multica autopilots. Covers the full chain: schedule/webhook/manual trigger, create_issue vs run_only execution, agent/squad leader admission, runs, created issues/tasks, webhook URL rotation, and side-effect boundaries.
+description: Use when creating, updating, inspecting, triggering, or debugging MultiAgent autopilots. Covers the full chain: schedule/webhook/manual trigger, create_issue vs run_only execution, agent/squad leader admission, runs, created issues/tasks, webhook URL rotation, and side-effect boundaries.
 user-invocable: false
 allowed-tools: Bash(multica *)
 ---
 
-# Multica Autopilots
+# MultiAgent Autopilots
 
 ## Quick start
 
@@ -27,7 +27,7 @@ The chain is: trigger fires (`schedule`, `webhook`, or `manual`) -> `autopilot_r
 
 Execution modes:
 
-- `create_issue` creates a Multica issue, making the run visible as issue state.
+- `create_issue` creates a MultiAgent issue, making the run visible as issue state.
 - `run_only` creates an agent task directly. No issue is created; any durable
   report location has to come from other task context or instructions.
 

@@ -1,11 +1,11 @@
 ---
 title: 자체 호스팅 빠른 시작
-description: Docker로 자체 서버나 기기에서 Multica를 실행합니다(Kubernetes에서는 Helm 사용 가능). 약 10분 소요됩니다.
+description: Docker로 자체 서버나 기기에서 MultiAgent를 실행합니다(Kubernetes에서는 Helm 사용 가능). 약 10분 소요됩니다.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-이 페이지는 Docker로 Multica **서버**(백엔드 + 프런트엔드 + PostgreSQL)를 자체 기기나 서버에서 실행하는 과정을 안내합니다. 완료하면 [워크스페이스](/workspaces), [이슈](/issues), [댓글](/comments), [에이전트](/agents) 구성을 비롯한 데이터가 완전히 본인의 통제하에 놓입니다.
+이 페이지는 Docker로 MultiAgent **서버**(백엔드 + 프런트엔드 + PostgreSQL)를 자체 기기나 서버에서 실행하는 과정을 안내합니다. 완료하면 [워크스페이스](/workspaces), [이슈](/issues), [댓글](/comments), [에이전트](/agents) 구성을 비롯한 데이터가 완전히 본인의 통제하에 놓입니다.
 
 에이전트 **실행**은 여전히 로컬에서 실행하는 [데몬](/daemon-runtimes)과 그 기기에 설치된 [AI 코딩 도구](/providers)에 의존합니다 — Cloud와 완전히 동일합니다. 자체 호스팅은 서버 계층을 교체할 뿐, 실행 계층을 교체하지는 않습니다.
 
@@ -31,7 +31,7 @@ make selfhost
 `make selfhost`는 다음을 수행합니다.
 
 1. `.env`가 없으면 `.env.example`로부터 생성하며 **무작위 JWT_SECRET**을 함께 만듭니다
-2. 공식 Docker 이미지(PostgreSQL, Multica backend, Multica frontend)를 받아옵니다
+2. 공식 Docker 이미지(PostgreSQL, MultiAgent backend, MultiAgent frontend)를 받아옵니다
 3. `docker-compose.selfhost.yml`을 사용해 모든 서비스를 시작합니다
 4. 백엔드의 `/health` 엔드포인트가 준비될 때까지 기다립니다
 
@@ -256,7 +256,7 @@ multica setup self-host \
   --app-url http://multica.dev.lan
 ```
 
-차트를 변경하지 않고 최신 이미지만 받아오려면 `kubectl -n multica rollout restart deploy/multica-backend deploy/multica-frontend`를 실행하세요. 특정 Multica 릴리스를 고정하려면 values 파일에서 `images.backend.tag` / `images.frontend.tag`를 설정하고 `helm upgrade`를 실행하세요. `helm -n multica uninstall multica`는 워크로드를 제거하지만 PVC와 Secret은 유지합니다. `kubectl delete namespace multica`는 모든 것을 삭제합니다.
+차트를 변경하지 않고 최신 이미지만 받아오려면 `kubectl -n multica rollout restart deploy/multica-backend deploy/multica-frontend`를 실행하세요. 특정 MultiAgent 릴리스를 고정하려면 values 파일에서 `images.backend.tag` / `images.frontend.tag`를 설정하고 `helm upgrade`를 실행하세요. `helm -n multica uninstall multica`는 워크로드를 제거하지만 PVC와 Secret은 유지합니다. `kubectl delete namespace multica`는 모든 것을 삭제합니다.
 
 전체 레퍼런스 — 세 가지 로그인 모드, web 이미지에 빌드 타임에 굳혀진 `REMOTE_API_URL`에 대한 `backend` ExternalName 우회책, 리소스 제한, TLS — 는 저장소의 [`SELF_HOSTING.md`](https://github.com/multica-ai/multica/blob/main/SELF_HOSTING.md#kubernetes-deployment-alternative)에 있습니다.
 

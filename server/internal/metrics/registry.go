@@ -43,7 +43,7 @@ func NewRegistry(opts RegistryOptions) *Registry {
 
 	buildInfo := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "multica_build_info",
-		Help: "Build information for the Multica server binary.",
+		Help: "Build information for the MultiAgent server binary.",
 	}, []string{"version", "commit"})
 	buildInfo.WithLabelValues(defaultLabel(opts.Version, "dev"), defaultLabel(opts.Commit, "unknown")).Set(1)
 	reg.MustRegister(buildInfo)

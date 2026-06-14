@@ -41,7 +41,7 @@ func normalizeGOOS(goos string) string {
 	}
 }
 
-// APIClient is a REST client for the Multica server API.
+// APIClient is a REST client for the MultiAgent server API.
 // Used by ctrl subcommands (agent, runtime, status, etc.). Requests
 // automatically include auth and execution context headers when configured.
 type APIClient struct {

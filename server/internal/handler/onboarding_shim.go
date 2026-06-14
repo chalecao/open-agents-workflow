@@ -50,8 +50,8 @@ const runtimeBootstrapBodyLimit = 8 * 1024
 const maxStarterPromptLen = 2 * 1024
 
 const (
-	onboardingAssistantName = "Multica Helper"
-	onboardingIssueTitle    = "Start here: learn Multica with Multica Helper"
+	onboardingAssistantName = "MultiAgent Helper"
+	onboardingIssueTitle    = "Start here: learn MultiAgent with MultiAgent Helper"
 	onboardingAgentTemplate = "multica_helper"
 
 	// noRuntimeIssueTitle MUST match the pre-v3 service constant so
@@ -59,23 +59,23 @@ const (
 	noRuntimeIssueTitle = "Connect a runtime to start using agents"
 )
 
-const onboardingAssistantDescription = "Built-in workspace assistant. Answers Multica questions and runs CLI operations."
+const onboardingAssistantDescription = "Built-in workspace assistant. Answers MultiAgent questions and runs CLI operations."
 
 const onboardingAssistantAvatarURL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='t' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%2323242C'/%3E%3Cstop offset='100%25' stop-color='%2313141A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='128' height='128' rx='28' fill='url(%23t)'/%3E%3Cg stroke='%23FFFFFF' stroke-width='13' stroke-linecap='round'%3E%3Cline x1='64' y1='32' x2='64' y2='96'/%3E%3Cline x1='32' y1='64' x2='96' y2='64'/%3E%3Cline x1='41.4' y1='41.4' x2='86.6' y2='86.6'/%3E%3Cline x1='86.6' y1='41.4' x2='41.4' y2='86.6'/%3E%3C/g%3E%3C/svg%3E"
 
 // onboardingAssistantInstructions is the system prompt persisted on every
-// Multica Helper agent created by this shim. Pre-v3 desktop submits a
+// MultiAgent Helper agent created by this shim. Pre-v3 desktop submits a
 // starter prompt from the workspace OnboardingHelperModal; that prompt
 // becomes the issue body, while this constant becomes the agent's identity
 // block in CLAUDE.md / AGENTS.md / GEMINI.md. v3 frontend has its own
 // in-views copy of this string (`packages/views/onboarding/templates/
 // helper-instructions.ts`) — these two must stay in sync until the shim
 // is removed.
-const onboardingAssistantInstructions = `You are Multica Helper, the built-in AI assistant for this Multica workspace. Your role is to help any member use Multica better — answer questions, give advice, and execute workspace operations on their behalf.
+const onboardingAssistantInstructions = `You are MultiAgent Helper, the built-in AI assistant for this MultiAgent workspace. Your role is to help any member use MultiAgent better — answer questions, give advice, and execute workspace operations on their behalf.
 
-## What Multica is
+## What MultiAgent is
 
-Multica is an open-source, AI-native team workspace (source: https://github.com/multica-ai/multica). The core idea: AI agents are treated as real teammates — they get assigned issues on a kanban-style board, comment in threads, change status, and run code, exactly like human members. You can also chat directly with agents (chat), group them into squads, and run scheduled or triggered automation (autopilot).
+MultiAgent is an open-source, AI-native team workspace (source: https://github.com/multica-ai/multica). The core idea: AI agents are treated as real teammates — they get assigned issues on a kanban-style board, comment in threads, change status, and run code, exactly like human members. You can also chat directly with agents (chat), group them into squads, and run scheduled or triggered automation (autopilot).
 
 For concept details (workspace / issue / project / agent / runtime / skill / squad / autopilot / inbox / chat session): fetch https://multica.ai/docs via WebFetch — that's authoritative. For the "why" or implementation, fetch the GitHub repo above. Never paraphrase concepts from memory.
 
@@ -96,13 +96,13 @@ A few things you can actually do (non-exhaustive — ` + "`--help`" + ` is the s
 
 Be concise and direct, like a colleague. Respond in the user's language (Chinese in, Chinese out). When pointing at a UI location, name the exact path ("Settings → Agents → New"); when pointing at a doc, link to the specific page, not the homepage. Never fabricate URLs, flags, or file paths.`
 
-const onboardingIssueDescription = `Welcome to Multica.
+const onboardingIssueDescription = `Welcome to MultiAgent.
 
-This is your guided first run. Multica Helper is assigned to this issue and will help you try the core workflow:
+This is your guided first run. MultiAgent Helper is assigned to this issue and will help you try the core workflow:
 
-1. Read Multica Helper's first comment.
+1. Read MultiAgent Helper's first comment.
 2. Reply with something you want to build, fix, write, or plan.
-3. @mention Multica Helper when you want it to continue.
+3. @mention MultiAgent Helper when you want it to continue.
 4. Open Agents and Runtimes later when you want to customize the teammate or the computer it runs on.
 
 You can close this issue when the workflow makes sense.`
@@ -130,7 +130,7 @@ type bootstrapOnboardingNoRuntimeResponse struct {
 
 // BootstrapOnboardingRuntime — DEPRECATED, kept for desktop < v3.
 //
-// Creates or reuses one "Multica Helper" agent on the supplied runtime,
+// Creates or reuses one "MultiAgent Helper" agent on the supplied runtime,
 // creates or reuses one onboarding issue assigned to it, then marks the
 // user onboarded. Single transaction.
 func (h *Handler) BootstrapOnboardingRuntime(w http.ResponseWriter, r *http.Request) {
@@ -495,11 +495,11 @@ func noRuntimeIssueDescription(language pgtype.Text) string {
 
 func enNoRuntimeIssueDescription() string {
 	return strings.Join([]string{
-		"Welcome to Multica.",
+		"Welcome to MultiAgent.",
 		"",
-		"Agents need a runtime before they can execute work. You can still use Multica as a lightweight project-management workspace while you install one.",
+		"Agents need a runtime before they can execute work. You can still use MultiAgent as a lightweight project-management workspace while you install one.",
 		"",
-		"## Try Multica first",
+		"## Try MultiAgent first",
 		"",
 		"Before the runtime is ready, you can:",
 		"",
@@ -524,7 +524,7 @@ func enNoRuntimeIssueDescription() string {
 		"4. Confirm your terminal can find it:",
 		"   which codex",
 		"   codex --version",
-		"5. Restart the Multica daemon:",
+		"5. Restart the MultiAgent daemon:",
 		"   multica daemon restart",
 		"   If you use the desktop app, restarting the app is enough.",
 		"6. Return to Runtimes and refresh. You should see a Codex runtime online.",
@@ -532,15 +532,15 @@ func enNoRuntimeIssueDescription() string {
 		"",
 		"Codex reference: https://developers.openai.com/codex/cli",
 		"",
-		"When the runtime is connected, you can create Multica Helper for a guided first run.",
+		"When the runtime is connected, you can create MultiAgent Helper for a guided first run.",
 	}, "\n")
 }
 
 func zhNoRuntimeIssueDescription() string {
 	return strings.Join([]string{
-		"欢迎来到 Multica。",
+		"欢迎来到 MultiAgent。",
 		"",
-		"智能体需要先连上运行时才能执行工作。运行时还没准备好时，你也可以先把 Multica 当作轻量项目管理工具体验起来。",
+		"智能体需要先连上运行时才能执行工作。运行时还没准备好时，你也可以先把 MultiAgent 当作轻量项目管理工具体验起来。",
 		"",
 		"## 先体验项目管理功能",
 		"",
@@ -568,7 +568,7 @@ func zhNoRuntimeIssueDescription() string {
 		"3. 在你想让 Kimi 工作的项目目录里启动一次：",
 		"   kimi",
 		"4. 首次启动后输入 /login，按提示完成 Kimi Code 或 API key 配置。",
-		"5. 重启 Multica 守护进程：",
+		"5. 重启 MultiAgent 守护进程：",
 		"   multica daemon restart",
 		"   如果你用桌面端，重启 app 即可。",
 		"6. 回到 Runtimes 页面刷新。你应该能看到一个在线的 Kimi 运行时。",
@@ -576,7 +576,7 @@ func zhNoRuntimeIssueDescription() string {
 		"",
 		"Kimi CLI 官方文档：https://moonshotai.github.io/kimi-cli/zh/guides/getting-started.html",
 		"",
-		"运行时连上后，你就可以创建 Multica Helper，开始一次有智能体参与的上手引导。",
+		"运行时连上后，你就可以创建 MultiAgent Helper，开始一次有智能体参与的上手引导。",
 	}, "\n")
 }
 

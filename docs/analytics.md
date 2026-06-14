@@ -1,6 +1,6 @@
 # Product Analytics
 
-This document is the source of truth for the analytics events Multica ships
+This document is the source of truth for the analytics events MultiAgent ships
 to PostHog. Events feed the acquisition → activation → expansion funnel that
 drives our weekly Active Workspaces (WAW) north-star metric.
 
@@ -36,7 +36,7 @@ events leave the process unless the operator explicitly opts in**.
 
 ### Self-hosted instances
 
-Self-hosters should **never inherit a Multica-issued `POSTHOG_API_KEY`** —
+Self-hosters should **never inherit a MultiAgent-issued `POSTHOG_API_KEY`** —
 that would route their users' behavior to our analytics project. The
 defaults guarantee this:
 

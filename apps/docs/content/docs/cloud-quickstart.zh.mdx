@@ -5,7 +5,7 @@ description: 5 分钟从注册到给智能体分配第一个任务。
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-这一页带你走一遍 Multica Cloud 的端到端流程——**注册 → 装 [命令行工具](/cli) → 启动 [守护进程](/daemon-runtimes) → 创建 [智能体](/agents) → 分配第一个 [任务](/tasks)**，约 5 分钟完成。
+这一页带你走一遍 MultiAgent Cloud 的端到端流程——**注册 → 装 [命令行工具](/cli) → 启动 [守护进程](/daemon-runtimes) → 创建 [智能体](/agents) → 分配第一个 [任务](/tasks)**，约 5 分钟完成。
 
 前置只有一个：你本地已经装了至少一款 [AI 编程工具](/providers)（[Antigravity](/providers#antigravity)、[Claude Code](/providers#claude-code)、[Codex](/providers#codex)、[Cursor](/providers#cursor)、[Copilot](/providers#copilot)、[Gemini](/providers#gemini)、[Hermes](/providers#hermes)、[Kimi](/providers#kimi)、[Kiro CLI](/providers#kiro-cli)、[OpenCode](/providers#opencode)、[OpenClaw](/providers#openclaw)、[Pi](/providers#pi)）中的一款。守护进程启动时会自动探测它们，没装任何一个的话守护进程会直接拒绝启动。
 
@@ -15,7 +15,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 注册完成后你会被自动分到一个默认工作区（以你的账号名生成）。之后可以改名字，也可以创建新的工作区。
 
-## 2. 装 Multica 命令行工具
+## 2. 装 MultiAgent 命令行工具
 
 **macOS / Linux（推荐走 Homebrew）**：
 
@@ -51,7 +51,7 @@ multica setup
 
 `multica setup` 会：
 
-1. 把命令行工具配置成连接 Multica Cloud
+1. 把命令行工具配置成连接 MultiAgent Cloud
 2. 打开浏览器让你登录（和 Web 登录一样的邮箱验证码 / Google OAuth）
 3. 把生成的 PAT 存到 `~/.multica/config.json`
 4. **自动启动守护进程**——开始每 3 秒轮询任务、每 15 秒发心跳
@@ -106,7 +106,7 @@ multica issue assign MUL-1 --to my-agent-name
 1. 3 秒内领走这条任务（任务状态从 `queued` 变 `dispatched`）
 2. 调用对应的 AI 编程工具开始执行（状态变 `running`）
 3. AI 在本地工作——可能会读你的代码目录、执行命令、编辑文件
-4. 结束后把结果发回 Multica（状态变 `completed` 或 `failed`，根据是否自动重试）
+4. 结束后把结果发回 MultiAgent（状态变 `completed` 或 `failed`，根据是否自动重试）
 
 Web 界面会**实时**（通过 WebSocket）显示进度——不需要刷新。
 

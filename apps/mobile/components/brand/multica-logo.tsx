@@ -1,5 +1,5 @@
 /**
- * Multica wordmark / sigil. 1:1 vector copy of docs/assets/logo-light.svg —
+ * MultiAgent wordmark / sigil. 1:1 vector copy of docs/assets/logo-light.svg —
  * keep this file and the SVG in sync.
  *
  * react-native-svg does not resolve CSS `currentColor`, so callers must pass

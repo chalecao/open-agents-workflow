@@ -58,10 +58,10 @@ multica squad member add <squad-id> --member-id <agent-or-user-uuid> --type agen
 
 ## 分配给小队的 issue 是怎么跑的
 
-非 Backlog 状态的 issue 一旦分配给小队，Multica 会立刻给**队长智能体**入队一个 `task`（不是给每个成员都入一个）。整个流程是这样的：
+非 Backlog 状态的 issue 一旦分配给小队，MultiAgent 会立刻给**队长智能体**入队一个 `task`（不是给每个成员都入一个）。整个流程是这样的：
 
 1. **队长领走 task。** 队长所在的 daemon 在下次轮询时把 task 领走，和普通智能体的分配流程一样。
-2. **队长拿到 briefing。** 领走的瞬间，Multica 会在队长的系统提示后面追加三段内容——详见下文 [队长每次执行看到的内容](#队长每次执行看到的内容)。
+2. **队长拿到 briefing。** 领走的瞬间，MultiAgent 会在队长的系统提示后面追加三段内容——详见下文 [队长每次执行看到的内容](#队长每次执行看到的内容)。
 3. **队长发一条"派活"评论。** 评论里用 roster 里给好的 mention markdown `@` 选中的成员——这个 `@` 会触发被派的成员入队新 `task`。
 4. **队长记录 evaluation：** `multica squad activity <issue-id> action --reason "..."`。这一行会写进 issue 的 activity 时间线，方便人类回溯队长确实评估过这一次触发。
 5. **队长停下。** 派完活，队长**不动手干活**。当被派的成员有回复时，队长会被自动唤醒，决定下一步：继续派活、上抛给人类、还是保持沉默。

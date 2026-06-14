@@ -1,11 +1,11 @@
 ---
 title: Self-host quickstart
-description: Run Multica on your own server or machine with Docker (or Helm on Kubernetes). Takes about 10 minutes.
+description: Run MultiAgent on your own server or machine with Docker (or Helm on Kubernetes). Takes about 10 minutes.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-This page walks you through running the Multica **server** (backend + frontend + PostgreSQL) on your own machine or server with Docker. When you're done, your data is fully under your control — including [workspaces](/workspaces), [issues](/issues), [comments](/comments), and [agent](/agents) configuration.
+This page walks you through running the MultiAgent **server** (backend + frontend + PostgreSQL) on your own machine or server with Docker. When you're done, your data is fully under your control — including [workspaces](/workspaces), [issues](/issues), [comments](/comments), and [agent](/agents) configuration.
 
 Agent **execution** still relies on the [daemon](/daemon-runtimes) you run locally plus the [AI coding tools](/providers) installed on that machine — exactly like Cloud. Self-host swaps out the server layer, not the execution layer.
 
@@ -31,7 +31,7 @@ make selfhost
 `make selfhost` will:
 
 1. Generate a `.env` from `.env.example` if missing, with a **random JWT_SECRET**
-2. Pull the official Docker images (PostgreSQL, Multica backend, Multica frontend)
+2. Pull the official Docker images (PostgreSQL, MultiAgent backend, MultiAgent frontend)
 3. Bring up every service using `docker-compose.selfhost.yml`
 4. Wait until the backend's `/health` endpoint is ready
 
@@ -255,7 +255,7 @@ multica setup self-host \
   --app-url http://multica.dev.lan
 ```
 
-To pull the latest images without changing the chart, `kubectl -n multica rollout restart deploy/multica-backend deploy/multica-frontend`. To pin a specific Multica release, set `images.backend.tag` / `images.frontend.tag` in your values file and `helm upgrade`. `helm -n multica uninstall multica` removes the workloads but keeps the PVCs and Secret; `kubectl delete namespace multica` wipes everything.
+To pull the latest images without changing the chart, `kubectl -n multica rollout restart deploy/multica-backend deploy/multica-frontend`. To pin a specific MultiAgent release, set `images.backend.tag` / `images.frontend.tag` in your values file and `helm upgrade`. `helm -n multica uninstall multica` removes the workloads but keeps the PVCs and Secret; `kubectl delete namespace multica` wipes everything.
 
 The full reference — three login modes, the `backend` ExternalName workaround for the build-time-baked `REMOTE_API_URL` in the web image, resource limits, and TLS — lives in the repo's [`SELF_HOSTING.md`](https://github.com/multica-ai/multica/blob/main/SELF_HOSTING.md#kubernetes-deployment-alternative).
 

@@ -1,19 +1,19 @@
-# Multica Docs 站重写规划（v2）
+# MultiAgent Docs 站重写规划（v2）
 
-> **本规划是什么**：Multica 对外 doc 站（`apps/docs/`，Fumadocs + Next.js）的从零重写方案。它替换 v1 规划——v1 之前在代码调研之前写的，很多对概念的切分现在看是错的。
+> **本规划是什么**：MultiAgent 对外 doc 站（`apps/docs/`，Fumadocs + Next.js）的从零重写方案。它替换 v1 规划——v1 之前在代码调研之前写的，很多对概念的切分现在看是错的。
 >
 > **v2 的数据基础**：4 份并行 subagent 的代码级调研，覆盖 Workspace/Members/Issues/Projects、Agent/Runtime/Daemon/Tasks、Skill/MCP/Autopilot/Chat、Inbox/Realtime/Auth 四大领域。每一处涉及产品行为的陈述都能在代码里找到对应位置。
 >
 > **本文档语言**：中文（团队内部规划，你要逐篇 review）。
 > **doc 站本身语言**：英文先行，中文作为 Phase 10 的 i18n。
 >
-> **风格目标**：排版/布局对标 Anthropic docs（奶油底、serif heading、宽松行距、窄行宽、深色代码块的灵魂），但**色板继续用 Multica 自己的 tokens**（冷蓝 brand）——visual 上是"Multica 色 + Anthropic 排版语法"。
+> **风格目标**：排版/布局对标 Anthropic docs（奶油底、serif heading、宽松行距、窄行宽、深色代码块的灵魂），但**色板继续用 MultiAgent 自己的 tokens**（冷蓝 brand）——visual 上是"MultiAgent 色 + Anthropic 排版语法"。
 
 ---
 
 ## 一、产品定位（文档的落脚点）
 
-Multica = **人 + AI agent 在同一个看板上协作的任务管理平台**。
+MultiAgent = **人 + AI agent 在同一个看板上协作的任务管理平台**。
 
 这个定位决定了它的文档**和普通 SaaS 文档有三个不一样的地方**，贯穿全规划：
 
@@ -60,7 +60,7 @@ Multica = **人 + AI agent 在同一个看板上协作的任务管理平台**。
 | 篇目 | 核心内容 |
 |---|---|
 | **Welcome** | 定位 + 核心价值 + 一张架构图 + 3 种部署形态（Cloud / Self-Host / Desktop）导航 |
-| **How Multica works** | 一张大图把 User / Issue / Agent / Runtime / Daemon / Skill / Task / Trigger 之间的关系串起来——目标是建立**正确心智模型**，而不是记名词 |
+| **How MultiAgent works** | 一张大图把 User / Issue / Agent / Runtime / Daemon / Skill / Task / Trigger 之间的关系串起来——目标是建立**正确心智模型**，而不是记名词 |
 
 ### 板块 2. Getting Started（3 篇）
 

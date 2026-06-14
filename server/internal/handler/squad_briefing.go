@@ -27,7 +27,7 @@ Your responsibilities, in order:
    criteria) and decide which squad member is best suited to do the work.
 2. **Delegate by @mention.** Post a single comment on this issue that
    @mentions the chosen member(s) and tells them what to do.
-   - **Be terse.** Every Multica agent already has full context of the
+   - **Be terse.** Every MultiAgent agent already has full context of the
      issue (title, description, all prior comments, attachments) and
      the surrounding workspace. Do NOT restate or summarise the
      issue body, prior discussion, or known facts in your delegation

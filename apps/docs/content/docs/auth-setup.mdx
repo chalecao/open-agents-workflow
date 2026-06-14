@@ -6,7 +6,7 @@ description: Configure email + verification code sign-in, Google OAuth, signup a
 import { Callout } from "fumadocs-ui/components/callout";
 import { Mermaid } from "@/components/mermaid";
 
-Multica supports two sign-in methods: **email + verification code** (default) and **Google OAuth** (optional). On successful sign-in, the server issues a JWT cookie with a 30-day lifetime. This page covers how to configure each method, how to restrict who can sign up, and the single biggest trap for self-hosted deployments.
+MultiAgent supports two sign-in methods: **email + verification code** (default) and **Google OAuth** (optional). On successful sign-in, the server issues a JWT cookie with a 30-day lifetime. This page covers how to configure each method, how to restrict who can sign up, and the single biggest trap for self-hosted deployments.
 
 For the list of environment variables referenced below, see [Environment variables](/environment-variables); for token usage and lifecycle details, see [Authentication and tokens](/auth-tokens).
 
@@ -109,7 +109,7 @@ Production deployments should leave `MULTICA_DEV_VERIFICATION_CODE` empty and se
 Optional. Without it, only email + verification code is available; with it, the sign-in page gets a "Sign in with Google" button.
 
 1. Create an OAuth 2.0 client in the [Google Cloud Console](https://console.cloud.google.com/)
-2. Set the **Authorized redirect URIs** to your Multica frontend address plus `/auth/callback`, for example:
+2. Set the **Authorized redirect URIs** to your MultiAgent frontend address plus `/auth/callback`, for example:
 
     ```text
     https://multica.yourdomain.com/auth/callback
@@ -171,7 +171,7 @@ To actually "allow everyone," leave all three variables empty (or keep `ALLOW_SI
 
 ## Can you still invite people when signup is disabled?
 
-**Only people who already have a Multica account.** Accepting an invite doesn't check the signup allowlist — if the invitee has signed up already (for example in another workspace), clicking the invite link and signing in lets them accept.
+**Only people who already have a MultiAgent account.** Accepting an invite doesn't check the signup allowlist — if the invitee has signed up already (for example in another workspace), clicking the invite link and signing in lets them accept.
 
 **But people who have never signed up cannot be rescued by an invite.** Before accepting, they must sign in, and the first step of sign-in (requesting the verification code) passes through the signup allowlist check. If `ALLOW_SIGNUP=false`, or their email isn't in `ALLOWED_EMAILS` / `ALLOWED_EMAIL_DOMAINS`, they **cannot complete signup**, and therefore cannot accept the invite.
 

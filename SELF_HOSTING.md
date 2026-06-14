@@ -1,6 +1,6 @@
 # Self-Hosting Guide
 
-Deploy Multica on your own infrastructure in minutes.
+Deploy MultiAgent on your own infrastructure in minutes.
 
 ## Architecture
 
@@ -24,7 +24,7 @@ curl -fsSL https://raw.githubusercontent.com/multica-ai/multica/main/scripts/ins
 multica setup self-host
 ```
 
-This installs the `multica` CLI, checks out the latest self-host assets, pulls the official Multica images from GHCR, and configures everything for localhost.
+This installs the `multica` CLI, checks out the latest self-host assets, pulls the official MultiAgent images from GHCR, and configures everything for localhost.
 
 Open http://localhost:3000. To log in, configure `RESEND_API_KEY` in `.env` for email-based codes (recommended), or leave Resend unset and copy the generated code from the backend logs. See [Step 2 — Log In](#step-2--log-in) for details.
 
@@ -139,7 +139,7 @@ multica daemon status
 
 ## Kubernetes Deployment (Alternative)
 
-If you already run a Kubernetes cluster, you can deploy Multica there instead of Docker Compose using the released OCI Helm chart at `oci://ghcr.io/multica-ai/charts/multica` or the source chart at [`deploy/helm/multica/`](deploy/helm/multica/). It targets a typical k3s / k8s setup with an Ingress controller and a default `ReadWriteOnce` StorageClass — authored against k3s + Traefik + `local-path`, and should work on any cluster with minor tweaks.
+If you already run a Kubernetes cluster, you can deploy MultiAgent there instead of Docker Compose using the released OCI Helm chart at `oci://ghcr.io/multica-ai/charts/multica` or the source chart at [`deploy/helm/multica/`](deploy/helm/multica/). It targets a typical k3s / k8s setup with an Ingress controller and a default `ReadWriteOnce` StorageClass — authored against k3s + Traefik + `local-path`, and should work on any cluster with minor tweaks.
 
 The chart creates the following resources in the target namespace:
 
@@ -151,7 +151,7 @@ The chart creates the following resources in the target namespace:
 
 The `multica-secrets` Secret is **not** managed by the chart — you create it once with `kubectl` so real values never need to land in git.
 
-> **One release per namespace:** the prebuilt `multica-web` image bakes `REMOTE_API_URL=http://backend:8080` at build time, so the chart ships an ExternalName Service literally named `backend`. Because that name is unprefixed, you can run only one Multica release per namespace, and `helm install` will fail if a `Service/backend` already exists there (pass `--take-ownership`, or use a dedicated namespace). If you build a web image with a patched `REMOTE_API_URL`, set `frontend.compatibility.backendAlias: false` to drop the alias.
+> **One release per namespace:** the prebuilt `multica-web` image bakes `REMOTE_API_URL=http://backend:8080` at build time, so the chart ships an ExternalName Service literally named `backend`. Because that name is unprefixed, you can run only one MultiAgent release per namespace, and `helm install` will fail if a `Service/backend` already exists there (pass `--take-ownership`, or use a dedicated namespace). If you build a web image with a patched `REMOTE_API_URL`, set `frontend.compatibility.backendAlias: false` to drop the alias.
 
 > **Prerequisites:** `kubectl` and `helm` (v3.13+ for `--take-ownership`, or v4+) configured for the target cluster, an Ingress controller (Traefik / NGINX), and a default StorageClass.
 
@@ -292,7 +292,7 @@ To pull the latest images without changing the chart version when your values st
 kubectl -n multica rollout restart deploy/multica-backend deploy/multica-frontend
 ```
 
-To upgrade to a specific Multica release, upgrade to the matching chart version. The released chart defaults its app images to the matching Git tag:
+To upgrade to a specific MultiAgent release, upgrade to the matching chart version. The released chart defaults its app images to the matching Git tag:
 
 ```bash
 helm upgrade multica oci://ghcr.io/multica-ai/charts/multica \
@@ -383,7 +383,7 @@ If you already have a `pg_cron` job in production, the safe sequence to retire i
      FROM cron.job WHERE jobname = 'rollup_task_usage_hourly';
    ```
 
-3. Leave the `pg_cron` extension itself installed unless you are sure no other workload depends on it. The bundled `pgvector/pgvector:pg17` image does **not** ship `pg_cron`, so nothing in Multica's default install needs it; uninstalling `pg_cron` from a custom image that other workloads still use is a separate decision.
+3. Leave the `pg_cron` extension itself installed unless you are sure no other workload depends on it. The bundled `pgvector/pgvector:pg17` image does **not** ship `pg_cron`, so nothing in MultiAgent's default install needs it; uninstalling `pg_cron` from a custom image that other workloads still use is a separate decision.
 
 External cron / systemd timer / Kubernetes `CronJob` setups that call `SELECT rollup_task_usage_hourly()` directly can be retired the same way — once `sys_cron_executions` shows steady SUCCESS rows from the in-process scheduler, the external job is redundant and can be removed.
 
@@ -405,9 +405,9 @@ make selfhost-stop
 multica daemon stop
 ```
 
-## Switching to Multica Cloud
+## Switching to MultiAgent Cloud
 
-If you've been self-hosting and want to switch your CLI to [Multica Cloud](https://multica.ai):
+If you've been self-hosting and want to switch your CLI to [MultiAgent Cloud](https://multica.ai):
 
 ```bash
 multica setup

@@ -195,7 +195,7 @@ func TestIsOfficialCloudServer(t *testing.T) {
 	}{
 		{"canonical cloud https", "https://api.multica.ai", true},
 		{"canonical cloud with trailing slash stripped", "https://api.multica.ai/", true},
-		{"canonical cloud case-insensitive", "https://API.Multica.AI", true},
+		{"canonical cloud case-insensitive", "https://API.MultiAgent.AI", true},
 		{"cloud over plain http (unusual but match host)", "http://api.multica.ai", true},
 		{"localhost is self-host", "http://localhost:8080", false},
 		{"loopback ip is self-host", "http://127.0.0.1:8080", false},
@@ -259,7 +259,7 @@ func TestLoadConfig_AutoUpdateDefault_SelfHostOff(t *testing.T) {
 }
 
 // TestLoadConfig_AutoUpdateDefault_CloudOn confirms the symmetric case: a
-// daemon pointed at Multica's hosted cloud keeps the historical opt-in
+// daemon pointed at MultiAgent's hosted cloud keeps the historical opt-in
 // auto-update default. We pass the WSS form of the URL to also exercise that
 // NormalizeServerBaseURL maps it through to the http host the detector
 // inspects.
@@ -273,7 +273,7 @@ func TestLoadConfig_AutoUpdateDefault_CloudOn(t *testing.T) {
 		t.Fatalf("LoadConfig: %v", err)
 	}
 	if !cfg.AutoUpdateEnabled {
-		t.Fatalf("AutoUpdateEnabled = false for Multica Cloud server, want true")
+		t.Fatalf("AutoUpdateEnabled = false for MultiAgent Cloud server, want true")
 	}
 }
 

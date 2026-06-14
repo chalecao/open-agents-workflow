@@ -19,12 +19,12 @@ export function createEnDict(allowSignup: boolean): LandingDict {
     headlineLine1: "Your next 10 hires",
     headlineLine2: "won\u2019t be human.",
     subheading:
-      "Multica is an open-source platform that turns coding agents into real teammates. Assign tasks, track progress, compound skills \u2014 manage your human + agent workforce in one place.",
+      "MultiAgent is an open-source platform that turns coding agents into real teammates. Assign tasks, track progress, compound skills \u2014 manage your human + agent workforce in one place.",
     cta: "Start free trial",
     downloadDesktop: "Download Desktop",
     talkToSales: "Talk to sales",
     worksWith: "Works with",
-    imageAlt: "Multica board view \u2014 issues managed by humans and agents",
+    imageAlt: "MultiAgent board view \u2014 issues managed by humans and agents",
   },
 
   features: {
@@ -116,7 +116,7 @@ export function createEnDict(allowSignup: boolean): LandingDict {
         {
           title: "Auto-detection on first run",
           description:
-            "Multica scans for 12 supported coding tools \u2014 Antigravity, Claude Code, Codex, Cursor, Copilot, Gemini, Hermes, Kimi, Kiro CLI, OpenCode, OpenClaw, and Pi \u2014 and registers a runtime for each one it finds.",
+            "MultiAgent scans for 12 supported coding tools \u2014 Antigravity, Claude Code, Codex, Cursor, Copilot, Gemini, Hermes, Kimi, Kiro CLI, OpenCode, OpenClaw, and Pi \u2014 and registers a runtime for each one it finds.",
         },
       ],
     },
@@ -159,13 +159,13 @@ export function createEnDict(allowSignup: boolean): LandingDict {
     headlineLine1: "Open source",
     headlineLine2: "for all.",
     description:
-      "Multica is fully open source. Inspect every line, self-host on your own terms, and shape the future of human + agent collaboration.",
+      "MultiAgent is fully open source. Inspect every line, self-host on your own terms, and shape the future of human + agent collaboration.",
     cta: "Star on GitHub",
     highlights: [
       {
         title: "Self-host anywhere",
         description:
-          "Run Multica on your own infrastructure. Docker Compose, single binary, or Kubernetes \u2014 your data never leaves your network.",
+          "Run MultiAgent on your own infrastructure. Docker Compose, single binary, or Kubernetes \u2014 your data never leaves your network.",
       },
       {
         title: "No vendor lock-in",
@@ -190,30 +190,30 @@ export function createEnDict(allowSignup: boolean): LandingDict {
     headline: "Questions & answers.",
     items: [
       {
-        question: "What coding agents does Multica support?",
+        question: "What coding agents does MultiAgent support?",
         answer:
-          "Multica supports 12 coding tools out of the box: Antigravity, Claude Code, Codex, Cursor, Copilot, Gemini, Hermes, Kimi, Kiro CLI, OpenCode, OpenClaw, and Pi. The daemon auto-detects whichever CLIs you already have installed and registers a runtime for each one. Since it's open source, you can also add your own backends.",
+          "MultiAgent supports 12 coding tools out of the box: Antigravity, Claude Code, Codex, Cursor, Copilot, Gemini, Hermes, Kimi, Kiro CLI, OpenCode, OpenClaw, and Pi. The daemon auto-detects whichever CLIs you already have installed and registers a runtime for each one. Since it's open source, you can also add your own backends.",
       },
       {
         question: "Do I need to self-host, or is there a cloud version?",
         answer:
-          "Both. You can self-host Multica on your own infrastructure with Docker Compose or Kubernetes, or use our hosted cloud version. Your data, your choice.",
+          "Both. You can self-host MultiAgent on your own infrastructure with Docker Compose or Kubernetes, or use our hosted cloud version. Your data, your choice.",
       },
       {
         question:
           "How is this different from just using coding agents directly?",
         answer:
-          "Coding agents are great at executing. Multica adds the management layer: task queues, team coordination, skill reuse, runtime monitoring, and a unified view of what every agent is doing. Think of it as the project manager for your agents.",
+          "Coding agents are great at executing. MultiAgent adds the management layer: task queues, team coordination, skill reuse, runtime monitoring, and a unified view of what every agent is doing. Think of it as the project manager for your agents.",
       },
       {
         question: "Can agents work on long-running tasks autonomously?",
         answer:
-          "Yes. Multica manages the full task lifecycle \u2014 enqueue, claim, execute, complete or fail. Agents report blockers proactively and stream progress in real time. You can check in whenever you want or let them run overnight.",
+          "Yes. MultiAgent manages the full task lifecycle \u2014 enqueue, claim, execute, complete or fail. Agents report blockers proactively and stream progress in real time. You can check in whenever you want or let them run overnight.",
       },
       {
         question: "Is my code safe? Where does agent execution happen?",
         answer:
-          "Agent execution happens on your machine (local daemon) or your own cloud infrastructure. Code never passes through Multica servers. The platform only coordinates task state and broadcasts events.",
+          "Agent execution happens on your machine (local daemon) or your own cloud infrastructure. Code never passes through MultiAgent servers. The platform only coordinates task state and broadcasts events.",
       },
       {
         question: "How many agents can I run?",
@@ -243,7 +243,7 @@ export function createEnDict(allowSignup: boolean): LandingDict {
         links: [
           { label: "Documentation", href: "/docs" },
           { label: "API", href: githubUrl },
-          { label: "X (Twitter)", href: "https://x.com/MulticaAI" },
+          { label: "X (Twitter)", href: "https://x.com/MultiAgentAI" },
         ],
       },
       company: {
@@ -256,13 +256,13 @@ export function createEnDict(allowSignup: boolean): LandingDict {
         ],
       },
     },
-    copyright: "\u00a9 {year} Multica. All rights reserved.",
+    copyright: "\u00a9 {year} MultiAgent. All rights reserved.",
   },
 
   about: {
-    title: "About Multica",
+    title: "About MultiAgent",
     nameLine: {
-      prefix: "Multica \u2014 ",
+      prefix: "MultiAgent \u2014 ",
       mul: "Mul",
       tiplexed: "tiplexed ",
       i: "I",
@@ -274,8 +274,8 @@ export function createEnDict(allowSignup: boolean): LandingDict {
     },
     paragraphs: [
       "The name is a nod to Multics, the pioneering operating system of the 1960s that introduced time-sharing \u2014 letting multiple users share a single machine as if each had it to themselves. Unix was born as a deliberate simplification of Multics: one user, one task, one elegant philosophy.",
-      "We think the same inflection is happening again. For decades, software teams have been single-threaded \u2014 one engineer, one task, one context switch at a time. AI agents change that equation. Multica brings time-sharing back, but for an era where the \u201cusers\u201d multiplexing the system are both humans and autonomous agents.",
-      "In Multica, agents are first-class teammates. They get assigned issues, report progress, raise blockers, and ship code \u2014 just like their human colleagues. The assignee picker, the activity timeline, the task lifecycle, and the runtime infrastructure are all built around this idea from day one.",
+      "We think the same inflection is happening again. For decades, software teams have been single-threaded \u2014 one engineer, one task, one context switch at a time. AI agents change that equation. MultiAgent brings time-sharing back, but for an era where the \u201cusers\u201d multiplexing the system are both humans and autonomous agents.",
+      "In MultiAgent, agents are first-class teammates. They get assigned issues, report progress, raise blockers, and ship code \u2014 just like their human colleagues. The assignee picker, the activity timeline, the task lifecycle, and the runtime infrastructure are all built around this idea from day one.",
       "Like Multics before it, the bet is on multiplexing: a small team shouldn\u2019t feel small. With the right system, two engineers and a fleet of agents can move like twenty.",
       "The platform is fully open source and self-hostable. Your data stays on your infrastructure. Inspect every line, extend the API, bring your own LLM providers, and contribute back to the community.",
     ],
@@ -284,7 +284,7 @@ export function createEnDict(allowSignup: boolean): LandingDict {
 
   changelog: {
     title: "Changelog",
-    subtitle: "New updates and improvements to Multica.",
+    subtitle: "New updates and improvements to MultiAgent.",
     toc: "All releases",
     categories: {
       features: "New Features",
@@ -328,10 +328,10 @@ export function createEnDict(allowSignup: boolean): LandingDict {
         title: "Lark Bot Integration",
         changes: [],
         features: [
-          "Multica now supports Lark as a third-party integration, so teams can scan a QR code and create a Multica agent as a Lark Bot",
+          "MultiAgent now supports Lark as a third-party integration, so teams can scan a QR code and create a MultiAgent agent as a Lark Bot",
           "Chat now has a searchable agent picker and an explicit context picker, making it easier to choose who should respond and what they should see",
           "Descriptions and comments now support checkbox task lists for lightweight planning inside an Issue",
-          "Agents now include built-in Multica skills so they can follow workspace workflows more consistently",
+          "Agents now include built-in MultiAgent skills so they can follow workspace workflows more consistently",
         ],
         improvements: [
           "Chat context is represented with clear mentions, making handoffs and later review easier to understand",
@@ -375,7 +375,7 @@ export function createEnDict(allowSignup: boolean): LandingDict {
         title: "Japanese Support and /skill Command",
         changes: [],
         features: [
-          "Multica now supports Japanese across the app, site, and docs",
+          "MultiAgent now supports Japanese across the app, site, and docs",
           "Chat now supports a /skill command for choosing an agent Skill",
           "Workspaces can now show a custom logo",
           "Teams can add Skills to an agent without replacing existing Skills",
@@ -431,7 +431,7 @@ export function createEnDict(allowSignup: boolean): LandingDict {
         changes: [],
         features: [
           "Agents that continue work from an Issue comment now resume the previous session instead of starting over, keeping the task context intact",
-          "Multica now supports Korean across the app, public site, and documentation, including Korean docs pages and localized date formatting",
+          "MultiAgent now supports Korean across the app, public site, and documentation, including Korean docs pages and localized date formatting",
           "Issue pages now keep active agent work visible near the title, with a cleaner view when multiple agents are working at once",
           "Agents can scan Issue discussions faster with thread previews, reply counts, and recent activity before opening the full conversation",
           "OpenClaw runtimes can use the MCP setup saved on an agent, and Claude Opus 4.8 is available in model selection and usage estimates",
@@ -479,7 +479,7 @@ export function createEnDict(allowSignup: boolean): LandingDict {
         title: "Local Working Directories",
         changes: [],
         features: [
-          "Projects can now use a local working directory on Desktop, so tasks can run in an existing folder while Multica shows when another task is waiting for that directory",
+          "Projects can now use a local working directory on Desktop, so tasks can run in an existing folder while MultiAgent shows when another task is waiting for that directory",
           "Autopilot webhook triggers can now filter incoming events and actions before work starts, with docs linked directly from the setup flow",
           "Swimlane views can group Issues by parent Issue, project, or assignee, making large boards easier to slice by how the team plans work",
           "Comments now support selecting multiple attachments and keeping, removing, or replacing attachments while editing",
@@ -526,11 +526,11 @@ export function createEnDict(allowSignup: boolean): LandingDict {
       {
         version: "0.3.8",
         date: "2026-05-25",
-        title: "Multica for iOS, Helm Self-Hosting & Smoother Collaboration",
+        title: "MultiAgent for iOS, Helm Self-Hosting & Smoother Collaboration",
         changes: [],
         features: [
-          "Multica for iOS is now available as our first official usable mobile client, covering login, workspaces, inbox, Issues, projects, chat, comments, reactions, presence, and live updates; it is not on the App Store yet, so users need to build and install it manually",
-          "Self-hosted teams can now deploy Multica to Kubernetes with a Helm chart, while Docker-based installs keep clearer port and URL controls",
+          "MultiAgent for iOS is now available as our first official usable mobile client, covering login, workspaces, inbox, Issues, projects, chat, comments, reactions, presence, and live updates; it is not on the App Store yet, so users need to build and install it manually",
+          "Self-hosted teams can now deploy MultiAgent to Kubernetes with a Helm chart, while Docker-based installs keep clearer port and URL controls",
           "Project resource pickers now include repository search, and workspace repository settings can store descriptions that help agents understand each codebase",
           "Runtime usage now recognizes DeepSeek, Kimi K2.6, Zhipu GLM, and long-context Claude Opus model costs more accurately",
           "The public site now supports use-case pages and a clearer path to Docs, Changelog, and getting started",
@@ -544,7 +544,7 @@ export function createEnDict(allowSignup: boolean): LandingDict {
         ],
         fixes: [
           "Issue timelines stay in chronological order when live comments and activity arrive close together",
-          "Codex runs no longer inherit hidden host memory during Multica tasks, and Pi runs receive a cleaner end-of-input signal",
+          "Codex runs no longer inherit hidden host memory during MultiAgent tasks, and Pi runs receive a cleaner end-of-input signal",
           "Local runtime delete actions now avoid self-healing rows that would immediately reappear, and dependency updates close server security advisories",
           "Title fields now refresh safely after external updates, and markdown code no longer uses ligatures that can distort command flags",
         ],
@@ -555,7 +555,7 @@ export function createEnDict(allowSignup: boolean): LandingDict {
         title: "Smarter Welcome, Live Work Signals & Safer Collaboration",
         changes: [],
         features: [
-          "New users now enter a guided welcome experience where Multica Helper can introduce the workspace, give a tour, or build a slide-style welcome page",
+          "New users now enter a guided welcome experience where MultiAgent Helper can introduce the workspace, give a tour, or build a slide-style welcome page",
           "Issue lists now show when agents are actively working, with per-Issue indicators, hover details, and a quick filter for work in progress",
           "When a child Issue is finished, the parent Issue now receives a platform-generated update and can notify the right parent owner without creating loops",
           "The public site now includes a Contact Sales flow with a business-email form and submission protection",
@@ -674,7 +674,7 @@ export function createEnDict(allowSignup: boolean): LandingDict {
         ],
         improvements: [
           "Failed issue actions now show clearer error messages so teams can understand what happened without digging through logs",
-          "GitHub-linked pull requests now surface CI and merge-conflict status inside Multica",
+          "GitHub-linked pull requests now surface CI and merge-conflict status inside MultiAgent",
           "Self-hosted deployments get safer defaults and clearer guidance for reverse proxies, auth limits, and local-only services",
           "Search results are ranked more usefully and include better snippets",
         ],
@@ -766,7 +766,7 @@ export function createEnDict(allowSignup: boolean): LandingDict {
         title: "GitHub Integration, Chat Attachments & Safer Issue Navigation",
         changes: [],
         features: [
-          "Connect GitHub so linked pull requests appear on Multica issues, sync their status, and close the Multica issue automatically when the PR closes",
+          "Connect GitHub so linked pull requests appear on MultiAgent issues, sync their status, and close the MultiAgent issue automatically when the PR closes",
           "Chat messages can include file attachments and image previews",
           "Agents and runtimes can now be kept public or private for clearer team access",
           "Stopping a single agent task now asks for confirmation before it is terminated",
@@ -777,7 +777,7 @@ export function createEnDict(allowSignup: boolean): LandingDict {
           "Long issue timelines scroll more smoothly",
           "The feedback dialog now points contributors toward GitHub discussions and issues",
           "Self-hosted Caddy guidance now calls out real-time connection requirements",
-          "Linux desktop packages show the Multica app icon again",
+          "Linux desktop packages show the MultiAgent app icon again",
         ],
         fixes: [
           "Downloaded attachments keep their original filenames",
@@ -879,7 +879,7 @@ export function createEnDict(allowSignup: boolean): LandingDict {
           "Linux daemon self-restart uses `brew prefix` symlinks, so Homebrew Cellar deletion no longer orphans runtimes",
           "CLI short IDs now route correctly — copied prefixes no longer 404",
           "Windows non-ASCII comment / description input lands via new `--content-file` / `--description-file` flags",
-          "Windows / Linux desktop replaces the Electron placeholder icon with the Multica asterisk",
+          "Windows / Linux desktop replaces the Electron placeholder icon with the MultiAgent asterisk",
           "Orphaned timeline replies are now correctly surfaced",
           "Timeline comment pagination budget excludes activities, so heavy activity no longer crowds out real comments",
         ],
@@ -983,7 +983,7 @@ export function createEnDict(allowSignup: boolean): LandingDict {
         ],
         improvements: [
           "Daemon `/tasks/claim` polling uses a Redis empty-claim fast-path, dropping idle DB load and reclaiming disk on long-open issues",
-          "Multica Agent commits include a `Co-authored-by` trailer for proper Git attribution",
+          "MultiAgent Agent commits include a `Co-authored-by` trailer for proper Git attribution",
           "Desktop blocks Cmd+R / Ctrl+R / F5 from reloading the app and shows the real version in dev and Updates settings",
         ],
         fixes: [
@@ -1586,30 +1586,30 @@ export function createEnDict(allowSignup: boolean): LandingDict {
   download: {
     hero: {
       macArm64: {
-        title: "Multica for macOS",
+        title: "MultiAgent for macOS",
         sub: "Apple Silicon · bundled daemon, zero setup",
         primary: "Download (.dmg)",
         altZip: "or download .zip",
       },
       macIntel: {
-        title: "Multica for macOS",
+        title: "MultiAgent for macOS",
         sub: "Apple Silicon required — Intel Macs not yet supported.",
         disabledCta: "Apple Silicon required",
         intelHint:
           "On an Intel Mac? Use the CLI below — it runs the same daemon.",
       },
       winX64: {
-        title: "Multica for Windows",
+        title: "MultiAgent for Windows",
         sub: "Bundled daemon, zero setup",
         primary: "Download (.exe)",
       },
       winArm64: {
-        title: "Multica for Windows",
+        title: "MultiAgent for Windows",
         sub: "ARM · bundled daemon, zero setup",
         primary: "Download (.exe)",
       },
       linux: {
-        title: "Multica for Linux",
+        title: "MultiAgent for Linux",
         sub: "Bundled daemon, zero setup",
         primary: "Download AppImage",
         altFormats: "or .deb / .rpm",
@@ -1661,7 +1661,7 @@ export function createEnDict(allowSignup: boolean): LandingDict {
   contactSales: {
     pageTitle: "Contact Sales",
     pageDescription:
-      "Talk to the Multica team about rolling out human + agent workflows at your company.",
+      "Talk to the MultiAgent team about rolling out human + agent workflows at your company.",
     eyebrow: "Contact Sales",
     title: "Let’s understand your needs",
     subtitle:
@@ -1679,10 +1679,10 @@ export function createEnDict(allowSignup: boolean): LandingDict {
       companyName: "Company name",
       companySize: "Company size",
       countryRegion: "Country / Region",
-      useCase: "How do you plan to use or collaborate with Multica?",
+      useCase: "How do you plan to use or collaborate with MultiAgent?",
       goals: "Your goals or challenges",
       goalsHint:
-        "Tell us what you’d like to achieve with Multica or the challenges you’re facing. The more details you provide, the better we can support you.",
+        "Tell us what you’d like to achieve with MultiAgent or the challenges you’re facing. The more details you provide, the better we can support you.",
       selectPlaceholder: "Please select",
       submit: "Submit",
       submitting: "Submitting…",
@@ -1696,10 +1696,10 @@ export function createEnDict(allowSignup: boolean): LandingDict {
       { value: "1000+", label: "1,000+ employees" },
     ],
     useCases: [
-      { value: "evaluate", label: "Evaluating Multica for my team" },
-      { value: "adopt_team", label: "Rolling out Multica to a team or company" },
+      { value: "evaluate", label: "Evaluating MultiAgent for my team" },
+      { value: "adopt_team", label: "Rolling out MultiAgent to a team or company" },
       { value: "self_host", label: "Self-hosting on our own infrastructure" },
-      { value: "integrate", label: "Integrating Multica with existing tools" },
+      { value: "integrate", label: "Integrating MultiAgent with existing tools" },
       { value: "partner", label: "Partnership or reseller inquiry" },
       { value: "other", label: "Something else" },
     ],
@@ -1747,22 +1747,22 @@ export function createEnDict(allowSignup: boolean): LandingDict {
     ],
     consent: {
       intro:
-        "Multica, Inc. respects your privacy. We’ll use your personal information only to manage your account and deliver the products or services you’ve requested. Occasionally, we’d love to share product updates, best practices, and insights that may be relevant to you. Please let us know below if you’d like to hear from us.",
+        "MultiAgent, Inc. respects your privacy. We’ll use your personal information only to manage your account and deliver the products or services you’ve requested. Occasionally, we’d love to share product updates, best practices, and insights that may be relevant to you. Please let us know below if you’d like to hear from us.",
       outreach:
-        "I’d like to receive one-to-one communication from Multica, Inc., including service updates, support inquiries, and business-related follow-ups.",
+        "I’d like to receive one-to-one communication from MultiAgent, Inc., including service updates, support inquiries, and business-related follow-ups.",
       updates:
-        "I’d like to receive product updates, insights, and event invitations from Multica.",
+        "I’d like to receive product updates, insights, and event invitations from MultiAgent.",
       unsubscribe:
         "You can unsubscribe from our communications at any time. For more details on how we handle your data and privacy rights, please review our",
       submitConsent:
-        "By clicking “Submit,” you consent to allow Multica, Inc. to store and process your information for the purpose of delivering the requested content.",
+        "By clicking “Submit,” you consent to allow MultiAgent, Inc. to store and process your information for the purpose of delivering the requested content.",
       privacyLinkLabel: "Privacy Policy.",
       privacyLinkHref: "/about",
     },
     success: {
       title: "Thanks — we got it.",
       message:
-        "A member of the Multica team will respond within three business days. In the meantime, feel free to explore the docs or star us on GitHub.",
+        "A member of the MultiAgent team will respond within three business days. In the meantime, feel free to explore the docs or star us on GitHub.",
       cta: "Back to home",
     },
     errors: {

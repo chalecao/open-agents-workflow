@@ -28,7 +28,7 @@ func BuildPrompt(task Task, provider string) string {
 		return buildQuickCreatePrompt(task)
 	}
 	var b strings.Builder
-	b.WriteString("You are running as a local coding agent for a Multica workspace.\n\n")
+	b.WriteString("You are running as a local coding agent for a MultiAgent workspace.\n\n")
 	fmt.Fprintf(&b, "Your assigned issue ID is: %s\n\n", task.IssueID)
 	fmt.Fprintf(&b, "Start by running `multica issue get %s --output json` to understand your task, then complete it.\n", task.IssueID)
 	fmt.Fprintf(&b, "For comment history, follow the rule in your runtime workflow file (assignment-triggered tasks treat the read as mandatory). `multica issue comment list %s --output json` returns all comments for the issue (server caps at 2000). On long-running issues use `--recent 20 --output json` to read the 20 most recently active threads, then page older threads via the stderr `Next thread cursor: ...` line and the matching `--before` / `--before-id` until you have enough history. `--since <RFC3339>` is still available for incremental polling and may combine with `--recent`.\n", task.IssueID)
@@ -44,7 +44,7 @@ func BuildPrompt(task Task, provider string) string {
 // or reply to.
 func buildQuickCreatePrompt(task Task) string {
 	var b strings.Builder
-	b.WriteString("You are running as a quick-create assistant for a Multica workspace.\n\n")
+	b.WriteString("You are running as a quick-create assistant for a MultiAgent workspace.\n\n")
 	b.WriteString("A user captured the following input via the quick-create modal. There is NO existing issue. Your job is to create a well-formed issue from this input with a single `multica issue create` command.\n\n")
 	fmt.Fprintf(&b, "User input:\n> %s\n\n", task.QuickCreatePrompt)
 
@@ -138,7 +138,7 @@ func buildQuickCreatePrompt(task Task) string {
 // previous turn's --parent UUID.
 func buildCommentPrompt(task Task, provider string) string {
 	var b strings.Builder
-	b.WriteString("You are running as a local coding agent for a Multica workspace.\n\n")
+	b.WriteString("You are running as a local coding agent for a MultiAgent workspace.\n\n")
 	fmt.Fprintf(&b, "Your assigned issue ID is: %s\n\n", task.IssueID)
 	if task.TriggerCommentContent != "" {
 		authorLabel := "A user"
@@ -181,7 +181,7 @@ func buildCommentPrompt(task Task, provider string) string {
 // buildChatPrompt constructs a prompt for interactive chat tasks.
 func buildChatPrompt(task Task) string {
 	var b strings.Builder
-	b.WriteString("You are running as a chat assistant for a Multica workspace.\n")
+	b.WriteString("You are running as a chat assistant for a MultiAgent workspace.\n")
 	b.WriteString("A user is chatting with you directly. Respond to their message.\n\n")
 	if task.Agent != nil && len(task.Agent.Skills) > 0 {
 		refs := ExtractSlashSkills(task.ChatMessage)
@@ -238,8 +238,8 @@ func buildChatPrompt(task Task) string {
 // buildAutopilotPrompt constructs a prompt for run_only autopilot tasks.
 func buildAutopilotPrompt(task Task) string {
 	var b strings.Builder
-	b.WriteString("You are running as a local coding agent for a Multica workspace.\n\n")
-	b.WriteString("This task was triggered by an Autopilot in run-only mode. There is no assigned Multica issue for this run.\n\n")
+	b.WriteString("You are running as a local coding agent for a MultiAgent workspace.\n\n")
+	b.WriteString("This task was triggered by an Autopilot in run-only mode. There is no assigned MultiAgent issue for this run.\n\n")
 	fmt.Fprintf(&b, "Autopilot run ID: %s\n", task.AutopilotRunID)
 	if task.AutopilotID != "" {
 		fmt.Fprintf(&b, "Autopilot ID: %s\n", task.AutopilotID)

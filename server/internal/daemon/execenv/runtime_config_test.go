@@ -513,7 +513,7 @@ func TestWriteRuntimeConfigFileCreatesMissingFile(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "CLAUDE.md")
-	const brief = "# Multica Agent Runtime\n\nbrief body line"
+	const brief = "# MultiAgent Agent Runtime\n\nbrief body line"
 
 	if err := writeRuntimeConfigFile(path, brief); err != nil {
 		t.Fatalf("writeRuntimeConfigFile returned error: %v", err)
@@ -543,7 +543,7 @@ func TestWriteRuntimeConfigFilePreservesUserContent(t *testing.T) {
 		t.Fatalf("seed user file: %v", err)
 	}
 
-	const brief = "## Multica brief\n\ninjected body"
+	const brief = "## MultiAgent brief\n\ninjected body"
 	if err := writeRuntimeConfigFile(path, brief); err != nil {
 		t.Fatalf("writeRuntimeConfigFile returned error: %v", err)
 	}
@@ -586,7 +586,7 @@ func TestWriteRuntimeConfigFileReplacesExistingBlock(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	const newBrief = "## New Multica brief\n\nfresh body"
+	const newBrief = "## New MultiAgent brief\n\nfresh body"
 	if err := writeRuntimeConfigFile(path, newBrief); err != nil {
 		t.Fatalf("writeRuntimeConfigFile returned error: %v", err)
 	}
@@ -622,7 +622,7 @@ func TestWriteRuntimeConfigFileIsIdempotent(t *testing.T) {
 		t.Fatalf("seed user file: %v", err)
 	}
 
-	const brief = "## Multica brief\n\nbody"
+	const brief = "## MultiAgent brief\n\nbody"
 	for i := 0; i < 5; i++ {
 		if err := writeRuntimeConfigFile(path, brief); err != nil {
 			t.Fatalf("iteration %d: %v", i, err)
@@ -744,8 +744,8 @@ func TestWriteRuntimeConfigFileIgnoresStrayEndMarkerBeforeBegin(t *testing.T) {
 
 	// Seed a file whose user-authored portion documents the marker format
 	// (so the *end* marker appears before any *begin* marker), then has a
-	// real block authored by an earlier Multica run below.
-	const userDoc = "# Repo CLAUDE.md\n\nExample of what Multica writes:\n" +
+	// real block authored by an earlier MultiAgent run below.
+	const userDoc = "# Repo CLAUDE.md\n\nExample of what MultiAgent writes:\n" +
 		runtimeMarkerEnd + "\n\n# Real config below\n"
 	original := userDoc +
 		runtimeMarkerBegin + "\nFIRST BRIEF\n" + runtimeMarkerEnd + "\n"
@@ -838,7 +838,7 @@ func TestWriteRuntimeConfigFileReplacesMalformedHalfBlock(t *testing.T) {
 
 // Cleanup excises the marker block, preserving every byte of surrounding
 // user content. This is the local_directory invariant: a `claude` /
-// `codex` run started by the user after a Multica task must see the same
+// `codex` run started by the user after a MultiAgent task must see the same
 // file the user wrote.
 func TestCleanupRuntimeConfigPreservesUserContent(t *testing.T) {
 	t.Parallel()

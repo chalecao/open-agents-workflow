@@ -42,7 +42,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 对话用 **provider 会话恢复**机制维持多轮上下文——智能体第一次回复时建立一个 provider 会话（比如 Claude 的 session），session ID 被存起来；下一条消息派任务时把这个 ID 传回去，智能体**接着上次的状态继续**，不需要每次重新读历史。
 
-如果**某一轮失败**，Multica 会查找上一轮建立过 session ID 的任务（不论它当时成功还是失败）并尝试 resume——不会因为中间一次出错就丢掉整段对话的记忆。
+如果**某一轮失败**，MultiAgent 会查找上一轮建立过 session ID 的任务（不论它当时成功还是失败）并尝试 resume——不会因为中间一次出错就丢掉整段对话的记忆。
 
 注意：并非所有 provider 都真正实现了 session 恢复——支持情况见 [**Providers Matrix**](/providers)。
 

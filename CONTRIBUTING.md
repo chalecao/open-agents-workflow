@@ -1,6 +1,6 @@
 # Contributing Guide
 
-This guide documents the local development workflow for contributors working on the Multica codebase.
+This guide documents the local development workflow for contributors working on the MultiAgent codebase.
 
 It covers:
 

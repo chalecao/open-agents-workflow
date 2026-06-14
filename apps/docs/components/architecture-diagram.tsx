@@ -1,10 +1,10 @@
 /**
- * Multica architecture diagram for §1.2 "How Multica Works".
+ * MultiAgent architecture diagram for §1.2 "How MultiAgent Works".
  *
  * Boundary-style layout: one large panel for "Your side" (where all the
  * interesting stuff happens — code, keys, compute), one smaller panel for
- * "Multica" (metadata store and coordinator).  The asymmetric sizes and the
- * brand-tinted left panel visually argue Multica's core thesis: AI runs on
+ * "MultiAgent" (metadata store and coordinator).  The asymmetric sizes and the
+ * brand-tinted left panel visually argue MultiAgent's core thesis: AI runs on
  * your machine, not ours.
  *
  * No SVG arrows.  Relationships are carried by the layout itself — client
@@ -55,7 +55,7 @@ function YourSide() {
         <div>
           <SectionLabel>Daemon</SectionLabel>
           <div className="text-xs text-muted-foreground mb-2.5">
-            Polls work from Multica. Invokes local AI coding tools:
+            Polls work from MultiAgent. Invokes local AI coding tools:
           </div>
           <div className="flex flex-wrap gap-1.5">
             <Pill>Claude Code</Pill>
@@ -83,7 +83,7 @@ function MulticaSide() {
   return (
     <div className="rounded-lg border border-border/70 bg-muted/25 p-6 flex flex-col">
       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground mb-5">
-        Multica
+        MultiAgent
       </div>
 
       <div className="flex-1 flex flex-col">

@@ -568,7 +568,7 @@ func TestDispatcher_DedupBeforeGroupFilter(t *testing.T) {
 }
 
 // TestDispatcher_DedupIsScopedPerInstallation pins MUL-2671's multi-bot
-// invariant: in a Lark group with TWO Multica bots installed, the
+// invariant: in a Lark group with TWO MultiAgent bots installed, the
 // same Lark message_id arrives at both WS supervisors and each one
 // MUST be free to claim, evaluate AddressedToBot independently, and
 // either ingest or drop. Before the (installation_id, message_id)

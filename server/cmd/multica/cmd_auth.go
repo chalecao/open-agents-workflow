@@ -23,7 +23,7 @@ import (
 
 // loginTokenPrefixes are the token prefixes `multica login --token` accepts.
 // The CLI used to hardcode `mul_` only, which made it impossible to log in
-// with a Multica Cloud Node PAT (`mcn_`) even though the server happily
+// with a MultiAgent Cloud Node PAT (`mcn_`) even though the server happily
 // authenticates both kinds. Keep this list in sync with the prefix branches
 // in server/internal/middleware/auth.go.
 var loginTokenPrefixes = []string{"mul_", auth.CloudPATPrefix}
@@ -42,7 +42,7 @@ func validateLoginTokenPrefix(token string) error {
 
 var authCmd = &cobra.Command{
 	Use:   "auth",
-	Short: "Authenticate multica with Multica",
+	Short: "Authenticate multica with MultiAgent",
 }
 
 var authStatusCmd = &cobra.Command{
@@ -434,7 +434,7 @@ const callbackSuccessHTML = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Multica — Authenticated</title>
+<title>MultiAgent — Authenticated</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   @media (prefers-color-scheme: dark) {
