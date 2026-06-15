@@ -194,9 +194,78 @@ export const CommentSchema = z.object({
   attachments: z.array(AttachmentSchema).default([]),
   created_at: z.string(),
   updated_at: z.string(),
+  // worktree_id is agent-only; default null so old payloads keep
+  // parsing after the field was added in migration 119.
+  worktree_id: z.string().nullable().optional(),
 }).loose();
 
 export const CommentsListSchema = z.array(CommentSchema);
+
+// =====================================================================
+// Worktree sidebar
+// =====================================================================
+// Per-worktree summary returned by GET /api/issues/:id/worktrees.
+// `id` is the absolute filesystem path (== worktree_id stamped on
+// agent comments); the client passes it straight to the diff/file
+// endpoints without translation.
+export const WorktreeFileChangeSchema = z.object({
+  path: z.string(),
+  old_path: z.string().optional(),
+  status: z.string(),
+  additions: z.number().int().default(0),
+  deletions: z.number().int().default(0),
+  binary: z.boolean().default(false),
+});
+export type WorktreeFileChange = z.infer<typeof WorktreeFileChangeSchema>;
+
+export const WorktreeListItemSchema = z.object({
+  id: z.string(),
+  branch: z.string().default(""),
+  base_branch: z.string().default(""),
+  task_count: z.number().int().default(0),
+  agent_count: z.number().int().default(0),
+  latest_status: z.string().default(""),
+  latest_task_id: z.string().default(""),
+  last_activity_at: z.string().nullable().optional(),
+  exists: z.boolean().default(true),
+  comment_count: z.number().int().default(0),
+});
+export type WorktreeListItem = z.infer<typeof WorktreeListItemSchema>;
+
+export const WorktreesListResponseSchema = z.object({
+  worktrees: z.array(WorktreeListItemSchema).default([]),
+});
+
+export const WorktreeDiffResponseSchema = z.object({
+  id: z.string(),
+  branch: z.string().default(""),
+  base_branch: z.string().default(""),
+  base_sha: z.string().default(""),
+  head_sha: z.string().default(""),
+  exists: z.boolean().default(true),
+  diff: z.string().default(""),
+  diff_truncated: z.boolean().default(false),
+  untracked: z.array(z.string()).default([]),
+  files: z.array(WorktreeFileChangeSchema).default([]),
+  unstaged_summary: z.string().default(""),
+  unstaged_files: z.array(WorktreeFileChangeSchema).default([]),
+});
+export type WorktreeDiffResponse = z.infer<typeof WorktreeDiffResponseSchema>;
+
+export const WorktreeFileResponseSchema = z.object({
+  id: z.string(),
+  path: z.string(),
+  exists: z.boolean().default(true),
+  binary: z.boolean().default(false),
+  before: z.string().optional(),
+  after: z.string().optional(),
+  before_bytes: z.number().int().default(0),
+  after_bytes: z.number().int().default(0),
+  truncated: z.boolean().default(false),
+  base_sha: z.string().default(""),
+  head_sha: z.string().default(""),
+});
+export type WorktreeFileResponse = z.infer<typeof WorktreeFileResponseSchema>;
 
 // Metadata is primitive-only by API/DB contract. Stay lenient on shape:
 // unknown keys land as `unknown` to a caller, but the field itself defaults

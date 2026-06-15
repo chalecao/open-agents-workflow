@@ -599,7 +599,17 @@ func (s *AutopilotService) dispatchOneHandoff(ctx context.Context, ap db.Autopil
 	// private-agent gating, leader-self-trigger guards, and the runtime
 	// wakeup — none of which would be safe to re-implement in this
 	// package.
-	if _, err := s.TaskSvc.EnqueueTaskForMention(ctx, p.Issue, ap.HandoffTargetAgentID, mentionContent.ID); err != nil {
+	//
+	// Handoff worktree inheritance: the target agent's task is born with
+	// work_dir pre-populated to the SOURCE agent's last worktree on this
+	// issue, so both agents share one git worktree on disk instead of the
+	// target cloning a fresh one. Empty string here is the documented
+	// fallback: the source agent has no prior task on this issue (e.g. it
+	// was reached via a chat trigger with no code task yet), so the target
+	// reverts to the standard per-(agent, issue) workdir reuse or a fresh
+	// worktree on first run.
+	inheritWorkDir := s.lookupHandoffSourceWorkDir(ctx, p)
+	if _, err := s.TaskSvc.EnqueueTaskForHandoffMention(ctx, p.Issue, ap.HandoffTargetAgentID, mentionContent.ID, inheritWorkDir); err != nil {
 		s.failRun(ctx, run.ID, "enqueue target agent: "+err.Error())
 		s.captureAutopilotRunFailed(ap, run, "handoff", "enqueue target agent: "+err.Error())
 		return fmt.Errorf("enqueue target agent: %w", err)
@@ -636,8 +646,63 @@ func (s *AutopilotService) dispatchOneHandoff(ctx context.Context, ap db.Autopil
 		"issue_id", util.UUIDToString(p.Issue.ID),
 		"run_id", util.UUIDToString(run.ID),
 		"target_agent_id", util.UUIDToString(ap.HandoffTargetAgentID),
+		"inherited_work_dir", inheritWorkDir,
 	)
 	return nil
+}
+
+// lookupHandoffSourceWorkDir returns the on-disk work_dir the SOURCE agent
+// most recently used for this issue, so the target agent's daemon can
+// reuse the same git worktree instead of cloning a fresh one.
+//
+// Returns "" when:
+//
+//   - the source has no prior task for this issue (e.g. a chat session or
+//     a brand-new agent),
+//   - the source's prior task ended without a work_dir recorded (e.g. it
+//     failed before opening a session),
+//   - the source's prior task is in a poisoned failure class (matches
+//     GetLastTaskSession's exclusion of iteration_limit / agent_fallback_message
+//     / api_invalid_request / codex_semantic_inactivity), or
+//   - the lookup itself errors (best-effort, never blocks the handoff).
+//
+// Empty string is the documented contract: the target's enqueue path treats
+// it as "no inheritance", so the target reverts to the standard
+// per-(agent, issue) workdir reuse or a fresh worktree on first run. We
+// deliberately do NOT skip the handoff on a lookup miss — a fresh worktree
+// is strictly better than a missed handoff from the user's perspective.
+//
+// The (source_agent_id, issue_id) lookup is preferred over the autopilot's
+// handoff_source_agent_id column because p.SourceID is the comment author
+// at runtime (the actual source), while handoff_source_agent_id is a static
+// config that can theoretically drift. They should match by design.
+func (s *AutopilotService) lookupHandoffSourceWorkDir(ctx context.Context, p HandoffDispatchParams) string {
+	if p.SourceID == "" || !p.Issue.ID.Valid {
+		return ""
+	}
+	sourceUUID, err := util.ParseUUID(p.SourceID)
+	if err != nil {
+		return ""
+	}
+	prior, err := s.Queries.GetLastTaskSession(ctx, db.GetLastTaskSessionParams{
+		AgentID: sourceUUID,
+		IssueID: p.Issue.ID,
+	})
+	if err != nil {
+		// Best-effort: a transient DB blip or no-prior-task both land
+		// here. The handoff should still fire; the target just gets a
+		// fresh worktree.
+		slog.Debug("handoff: source work_dir lookup failed; falling back to fresh worktree",
+			"source_agent_id", p.SourceID,
+			"issue_id", util.UUIDToString(p.Issue.ID),
+			"error", err,
+		)
+		return ""
+	}
+	if !prior.WorkDir.Valid || prior.WorkDir.String == "" {
+		return ""
+	}
+	return prior.WorkDir.String
 }
 
 // postHandoffComment inserts the system-authored @-mention comment and

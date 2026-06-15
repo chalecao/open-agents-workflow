@@ -33,6 +33,13 @@ type CommentResponse struct {
 	ResolvedByID   *string              `json:"resolved_by_id"`
 	Reactions      []ReactionResponse   `json:"reactions"`
 	Attachments    []AttachmentResponse `json:"attachments"`
+	// WorktreeID is stamped on agent-authored comments by the task pipeline
+	// (TaskService.createAgentComment) and surfaces the absolute path of
+	// the worktree the agent was operating on. nil on user / system
+	// comments that have no worktree association. The frontend renders
+	// it next to the timestamp on the agent card header and uses it to
+	// jump into the matching worktree on the sidebar.
+	WorktreeID *string `json:"worktree_id,omitempty"`
 	// Orientation stats — populated only on the roots_only path and omitted in
 	// every other mode, so the default response shape stays byte-identical for
 	// existing callers. ReplyCount is the number of descendants in the thread;
@@ -69,6 +76,7 @@ func commentToResponse(c db.Comment, reactions []ReactionResponse, attachments [
 		ResolvedByID:   uuidToPtr(c.ResolvedByID),
 		Reactions:      reactions,
 		Attachments:    attachments,
+		WorktreeID:     textToPtr(c.WorktreeID),
 	}
 }
 
@@ -940,11 +948,22 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 			SourceID:    authorID,
 			TriggerDate: time.Now().UTC().Format("2006-01-02"),
 		}); err != nil {
-			slog.Warn("handoff dispatch failed", append(logger.RequestAttrs(r),
-				"error", err,
-				"issue_id", issueID,
-				"comment_id", uuidToString(comment.ID),
-			)...)
+			// Surface the failure with enough context to triage in the
+			// server log. Previously this was a bare slog.Warn with no
+			// workspace / agent fields, which made "handoff autopilot
+			// silently never fires" the kind of bug you only find by
+			// querying autopilot_run.source = 'handoff' and noticing
+			// the row count is zero. The structured fields below let an
+			// operator search by workspace or source agent when a
+			// member reports the handoff chain stopped firing.
+			slog.Error("handoff dispatch failed",
+				append(logger.RequestAttrs(r),
+					"error", err,
+					"issue_id", issueID,
+					"workspace_id", uuidToString(issue.WorkspaceID),
+					"comment_id", uuidToString(comment.ID),
+					"source_agent_id", authorID,
+				)...)
 		}
 	}
 

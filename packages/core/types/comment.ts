@@ -29,4 +29,11 @@ export interface Comment {
   resolved_at: string | null;
   resolved_by_type: CommentAuthorType | null;
   resolved_by_id: string | null;
+  // Absolute path of the git worktree the agent was operating on when
+  // posting this comment. Populated only for agent-authored comments
+  // (the task pipeline stamps it in TaskService.createAgentComment);
+  // null for user / system / older agent rows. The worktree sidebar
+  // cross-links from the agent card header to the matching worktree
+  // using this id (== worktree sidebar list `id` == absolute path).
+  worktree_id?: string | null;
 }

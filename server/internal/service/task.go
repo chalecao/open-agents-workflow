@@ -498,7 +498,7 @@ func (s *TaskService) enqueueIssueTask(ctx context.Context, issue db.Issue, trig
 // Unlike EnqueueTaskForIssue, this takes an explicit agent ID rather than
 // deriving it from the issue assignee.
 func (s *TaskService) EnqueueTaskForMention(ctx context.Context, issue db.Issue, agentID pgtype.UUID, triggerCommentID pgtype.UUID) (db.AgentTaskQueue, error) {
-	return s.enqueueMentionTask(ctx, issue, agentID, triggerCommentID, false, false)
+	return s.enqueueMentionTask(ctx, issue, agentID, triggerCommentID, false, false, "")
 }
 
 // EnqueueTaskForSquadLeader is the leader-role variant of EnqueueTaskForMention.
@@ -508,10 +508,28 @@ func (s *TaskService) EnqueueTaskForMention(ctx context.Context, issue db.Issue,
 // as a worker (do not skip). This matters for agents that are simultaneously
 // the leader and a worker of the same squad — see migration 090.
 func (s *TaskService) EnqueueTaskForSquadLeader(ctx context.Context, issue db.Issue, leaderID pgtype.UUID, triggerCommentID pgtype.UUID) (db.AgentTaskQueue, error) {
-	return s.enqueueMentionTask(ctx, issue, leaderID, triggerCommentID, true, false)
+	return s.enqueueMentionTask(ctx, issue, leaderID, triggerCommentID, true, false, "")
 }
 
-func (s *TaskService) enqueueMentionTask(ctx context.Context, issue db.Issue, agentID pgtype.UUID, triggerCommentID pgtype.UUID, isLeader bool, forceFreshSession bool) (db.AgentTaskQueue, error) {
+// EnqueueTaskForHandoffMention is the autopilot-handoff variant of
+// EnqueueTaskForMention. In addition to queuing the target agent's task, it
+// pre-populates the new task's work_dir column with `inheritWorkDir` so the
+// claim handler routes the target's daemon into the SOURCE agent's git
+// worktree instead of cloning a fresh one. Pass an empty string to fall
+// back to the default behaviour (target's own prior worktree, or fresh).
+//
+// `inheritWorkDir` is the on-disk path the source agent most recently used
+// for the same issue; see AutopilotService.dispatchOneHandoff for the lookup
+// (GetLastTaskSession on (source_agent_id, issue_id)). The path is
+// propagated to the daemon via task.work_dir and consumed by the
+// claim handler (handler/daemon.go) as the inherited worktree path — the
+// daemon's execenv.Reuse then reuses the worktree on disk instead of
+// re-cloning.
+func (s *TaskService) EnqueueTaskForHandoffMention(ctx context.Context, issue db.Issue, agentID pgtype.UUID, triggerCommentID pgtype.UUID, inheritWorkDir string) (db.AgentTaskQueue, error) {
+	return s.enqueueMentionTask(ctx, issue, agentID, triggerCommentID, false, false, inheritWorkDir)
+}
+
+func (s *TaskService) enqueueMentionTask(ctx context.Context, issue db.Issue, agentID pgtype.UUID, triggerCommentID pgtype.UUID, isLeader bool, forceFreshSession bool, inheritWorkDir string) (db.AgentTaskQueue, error) {
 	agent, err := s.Queries.GetAgent(ctx, agentID)
 	if err != nil {
 		slog.Error("mention task enqueue failed: agent not found", "issue_id", util.UUIDToString(issue.ID), "agent_id", util.UUIDToString(agentID), "error", err)
@@ -526,6 +544,16 @@ func (s *TaskService) enqueueMentionTask(ctx context.Context, issue db.Issue, ag
 		return db.AgentTaskQueue{}, fmt.Errorf("agent has no runtime")
 	}
 
+	// Handoff inheritance: stamp the source agent's last work_dir onto the
+	// new task row so the claim handler can hand it back to the daemon as
+	// the inherited worktree path. Empty string is the normal-case no-op;
+	// the column is NULL and the daemon falls through to the standard
+	// per-(agent, issue) prior-session lookup.
+	inheritWorkDirText := pgtype.Text{}
+	if inheritWorkDir != "" {
+		inheritWorkDirText = pgtype.Text{String: inheritWorkDir, Valid: true}
+	}
+
 	task, err := s.Queries.CreateAgentTask(ctx, db.CreateAgentTaskParams{
 		AgentID:           agentID,
 		RuntimeID:         agent.RuntimeID,
@@ -535,13 +563,20 @@ func (s *TaskService) enqueueMentionTask(ctx context.Context, issue db.Issue, ag
 		TriggerSummary:    s.buildCommentTriggerSummary(ctx, triggerCommentID),
 		IsLeaderTask:      pgtype.Bool{Bool: isLeader, Valid: isLeader},
 		ForceFreshSession: pgtype.Bool{Bool: forceFreshSession, Valid: forceFreshSession},
+		WorkDir:           inheritWorkDirText,
 	})
 	if err != nil {
 		slog.Error("mention task enqueue failed", "issue_id", util.UUIDToString(issue.ID), "agent_id", util.UUIDToString(agentID), "error", err)
 		return db.AgentTaskQueue{}, fmt.Errorf("create task: %w", err)
 	}
 
-	slog.Info("mention task enqueued", "task_id", util.UUIDToString(task.ID), "issue_id", util.UUIDToString(issue.ID), "agent_id", util.UUIDToString(agentID), "is_leader_task", isLeader)
+	slog.Info("mention task enqueued",
+		"task_id", util.UUIDToString(task.ID),
+		"issue_id", util.UUIDToString(issue.ID),
+		"agent_id", util.UUIDToString(agentID),
+		"is_leader_task", isLeader,
+		"inherited_work_dir", inheritWorkDir,
+	)
 	// See EnqueueTaskForIssue for ordering rationale.
 	s.broadcastTaskEvent(ctx, protocol.EventTaskQueued, task)
 	s.NotifyTaskEnqueued(ctx, task)
@@ -1193,7 +1228,7 @@ func (s *TaskService) CompleteTask(ctx context.Context, taskID pgtype.UUID, resu
 							"agent_id", util.UUIDToString(task.AgentID),
 						)
 					} else {
-						s.createAgentComment(ctx, task.IssueID, task.AgentID, redact.Text(body), "comment", task.TriggerCommentID)
+						s.createAgentComment(ctx, task.IssueID, task.AgentID, redact.Text(body), "comment", task.TriggerCommentID, task.WorkDir.String)
 					}
 				}
 			}
@@ -1354,7 +1389,7 @@ func (s *TaskService) FailTask(ctx context.Context, taskID pgtype.UUID, errMsg, 
 	// want to spam the issue with "task timed out" messages on every
 	// daemon hiccup.
 	if errMsg != "" && task.IssueID.Valid && retried == nil {
-		s.createAgentComment(ctx, task.IssueID, task.AgentID, redact.Text(errMsg), "system", task.TriggerCommentID)
+		s.createAgentComment(ctx, task.IssueID, task.AgentID, redact.Text(errMsg), "system", task.TriggerCommentID, task.WorkDir.String)
 	}
 
 	// Mirror the issue fallback for chat tasks: write an assistant
@@ -1602,7 +1637,7 @@ func (s *TaskService) enqueueRerunTask(ctx context.Context, issue db.Issue, agen
 		util.UUIDToString(issue.AssigneeID) == util.UUIDToString(agentID) {
 		return s.enqueueIssueTask(ctx, issue, triggerCommentID, true)
 	}
-	return s.enqueueMentionTask(ctx, issue, agentID, triggerCommentID, isLeader, true)
+	return s.enqueueMentionTask(ctx, issue, agentID, triggerCommentID, isLeader, true, "")
 }
 
 // HandleFailedTasks runs the post-failure side effects for a batch of
@@ -2006,7 +2041,7 @@ func (s *TaskService) getIssuePrefix(workspaceID pgtype.UUID) string {
 	return ws.IssuePrefix
 }
 
-func (s *TaskService) createAgentComment(ctx context.Context, issueID, agentID pgtype.UUID, content, commentType string, parentID pgtype.UUID) {
+func (s *TaskService) createAgentComment(ctx context.Context, issueID, agentID pgtype.UUID, content, commentType string, parentID pgtype.UUID, worktreeID string) {
 	if content == "" {
 		return
 	}
@@ -2029,6 +2064,13 @@ func (s *TaskService) createAgentComment(ctx context.Context, issueID, agentID p
 	}
 	// Expand bare issue identifiers (e.g. MUL-117) into mention links.
 	content = mention.ExpandIssueIdentifiers(ctx, s.Queries, issue.WorkspaceID, content)
+	// Stamp the worktree_id so the worktree sidebar can cross-link from
+	// the agent's card header into the per-worktree file tree / diff.
+	// Stays NULL when the task has no work_dir (e.g. chat-only tasks).
+	worktreeText := pgtype.Text{}
+	if worktreeID != "" {
+		worktreeText = pgtype.Text{String: worktreeID, Valid: true}
+	}
 	comment, err := s.Queries.CreateComment(ctx, db.CreateCommentParams{
 		IssueID:     issueID,
 		WorkspaceID: issue.WorkspaceID,
@@ -2037,9 +2079,18 @@ func (s *TaskService) createAgentComment(ctx context.Context, issueID, agentID p
 		Content:     content,
 		Type:        commentType,
 		ParentID:    parentID,
+		WorktreeID:  worktreeText,
 	})
 	if err != nil {
 		return
+	}
+	// Mirror worktree_id on the realtime event so subscribers (the
+	// worktree panel, the agent card header) can update without an
+	// extra round-trip.
+	worktreePayload := (*string)(nil)
+	if comment.WorktreeID.Valid {
+		v := comment.WorktreeID.String
+		worktreePayload = &v
 	}
 	s.Bus.Publish(events.Event{
 		Type:        protocol.EventCommentCreated,
@@ -2056,6 +2107,7 @@ func (s *TaskService) createAgentComment(ctx context.Context, issueID, agentID p
 				"type":        comment.Type,
 				"parent_id":   util.UUIDToPtr(comment.ParentID),
 				"created_at":  comment.CreatedAt.Time.Format("2006-01-02T15:04:05Z"),
+				"worktree_id": worktreePayload,
 			},
 			"issue_title":  issue.Title,
 			"issue_status": issue.Status,

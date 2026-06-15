@@ -195,6 +195,12 @@ import {
   LLMProviderResponseSchema,
   EMPTY_LLM_PROVIDER_LIST,
   EMPTY_LLM_PROVIDER,
+  WorktreesListResponseSchema,
+  WorktreeDiffResponseSchema,
+  WorktreeFileResponseSchema,
+  type WorktreeListItem,
+  type WorktreeDiffResponse,
+  type WorktreeFileResponse,
 } from "./schemas";
 
 /** Identifies the calling client to the server.
@@ -652,6 +658,81 @@ export class ApiClient {
         ...(attachmentIds?.length ? { attachment_ids: attachmentIds } : {}),
       }),
     });
+  }
+
+  // =====================================================================
+  // Worktree sidebar
+  // =====================================================================
+  // The worktree_id is the absolute filesystem path of the agent's
+  // git worktree. URL-encoding is required because the path can
+  // contain slashes / spaces / unicode; chi captures the encoded
+  // segment and the handler decodes it via url.PathUnescape.
+
+  async listIssueWorktrees(issueId: string): Promise<WorktreeListItem[]> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/worktrees`);
+    const parsed = parseWithFallback(
+      raw,
+      WorktreesListResponseSchema,
+      { worktrees: [] },
+      { endpoint: "GET /api/issues/:id/worktrees" },
+    );
+    return parsed.worktrees;
+  }
+
+  async getIssueWorktreeDiff(
+    issueId: string,
+    worktreeId: string,
+  ): Promise<WorktreeDiffResponse> {
+    const encoded = encodeURIComponent(worktreeId);
+    const raw = await this.fetch<unknown>(
+      `/api/issues/${issueId}/worktrees/${encoded}/diff`,
+    );
+    return parseWithFallback(
+      raw,
+      WorktreeDiffResponseSchema,
+      {
+        id: worktreeId,
+        branch: "",
+        base_branch: "",
+        base_sha: "",
+        head_sha: "",
+        exists: true,
+        diff: "",
+        diff_truncated: false,
+        untracked: [],
+        files: [],
+        unstaged_summary: "",
+        unstaged_files: [],
+      },
+      { endpoint: "GET /api/issues/:id/worktrees/:id/diff" },
+    );
+  }
+
+  async getIssueWorktreeFile(
+    issueId: string,
+    worktreeId: string,
+    path: string,
+  ): Promise<WorktreeFileResponse> {
+    const encoded = encodeURIComponent(worktreeId);
+    const raw = await this.fetch<unknown>(
+      `/api/issues/${issueId}/worktrees/${encoded}/file?path=${encodeURIComponent(path)}`,
+    );
+    return parseWithFallback(
+      raw,
+      WorktreeFileResponseSchema,
+      {
+        id: worktreeId,
+        path,
+        exists: true,
+        binary: false,
+        before_bytes: 0,
+        after_bytes: 0,
+        truncated: false,
+        base_sha: "",
+        head_sha: "",
+      },
+      { endpoint: "GET /api/issues/:id/worktrees/:id/file" },
+    );
   }
 
   async listTimeline(issueId: string): Promise<TimelineEntry[]> {

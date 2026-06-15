@@ -28,6 +28,48 @@ func (q *Queries) CountComments(ctx context.Context, arg CountCommentsParams) (i
 	return count, err
 }
 
+const countCommentsByWorktreeIDForIssue = `-- name: CountCommentsByWorktreeIDForIssue :many
+SELECT worktree_id, count(*)::bigint AS comment_count
+FROM comment
+WHERE issue_id = $1 AND workspace_id = $2 AND worktree_id IS NOT NULL
+GROUP BY worktree_id
+`
+
+type CountCommentsByWorktreeIDForIssueParams struct {
+	IssueID     pgtype.UUID `json:"issue_id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+type CountCommentsByWorktreeIDForIssueRow struct {
+	WorktreeID   pgtype.Text `json:"worktree_id"`
+	CommentCount int64       `json:"comment_count"`
+}
+
+// Counts comments on an issue grouped by worktree_id, used by the worktree
+// sidebar to surface "N comments on this worktree". Includes only non-NULL
+// worktree_id rows; user / system comments without a worktree are out of
+// scope for the worktree panel. The handler collapses the row slice into
+// a map[string]int64 keyed by worktree_id for O(1) lookup.
+func (q *Queries) CountCommentsByWorktreeIDForIssue(ctx context.Context, arg CountCommentsByWorktreeIDForIssueParams) ([]CountCommentsByWorktreeIDForIssueRow, error) {
+	rows, err := q.db.Query(ctx, countCommentsByWorktreeIDForIssue, arg.IssueID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountCommentsByWorktreeIDForIssueRow{}
+	for rows.Next() {
+		var i CountCommentsByWorktreeIDForIssueRow
+		if err := rows.Scan(&i.WorktreeID, &i.CommentCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countNewCommentsSince = `-- name: CountNewCommentsSince :one
 SELECT count(*) FROM comment
 WHERE issue_id = $1
@@ -67,9 +109,9 @@ func (q *Queries) CountNewCommentsSince(ctx context.Context, arg CountNewComment
 }
 
 const createComment = `-- name: CreateComment :one
-INSERT INTO comment (issue_id, workspace_id, author_type, author_id, content, type, parent_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id
+INSERT INTO comment (issue_id, workspace_id, author_type, author_id, content, type, parent_id, worktree_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, worktree_id
 `
 
 type CreateCommentParams struct {
@@ -80,6 +122,7 @@ type CreateCommentParams struct {
 	Content     string      `json:"content"`
 	Type        string      `json:"type"`
 	ParentID    pgtype.UUID `json:"parent_id"`
+	WorktreeID  pgtype.Text `json:"worktree_id"`
 }
 
 func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error) {
@@ -91,6 +134,7 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 		arg.Content,
 		arg.Type,
 		arg.ParentID,
+		arg.WorktreeID,
 	)
 	var i Comment
 	err := row.Scan(
@@ -107,6 +151,7 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 		&i.ResolvedAt,
 		&i.ResolvedByType,
 		&i.ResolvedByID,
+		&i.WorktreeID,
 	)
 	return i, err
 }
@@ -127,7 +172,7 @@ func (q *Queries) DeleteComment(ctx context.Context, arg DeleteCommentParams) er
 }
 
 const getComment = `-- name: GetComment :one
-SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id FROM comment
+SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, worktree_id FROM comment
 WHERE id = $1
 `
 
@@ -148,12 +193,13 @@ func (q *Queries) GetComment(ctx context.Context, id pgtype.UUID) (Comment, erro
 		&i.ResolvedAt,
 		&i.ResolvedByType,
 		&i.ResolvedByID,
+		&i.WorktreeID,
 	)
 	return i, err
 }
 
 const getCommentInWorkspace = `-- name: GetCommentInWorkspace :one
-SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id FROM comment
+SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, worktree_id FROM comment
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -179,6 +225,7 @@ func (q *Queries) GetCommentInWorkspace(ctx context.Context, arg GetCommentInWor
 		&i.ResolvedAt,
 		&i.ResolvedByType,
 		&i.ResolvedByID,
+		&i.WorktreeID,
 	)
 	return i, err
 }
@@ -193,7 +240,7 @@ WITH RECURSIVE root_of AS (
     FROM comment p
     JOIN root_of r ON p.id = r.parent_id
 )
-SELECT c.id, c.issue_id, c.author_type, c.author_id, c.content, c.type, c.created_at, c.updated_at, c.parent_id, c.workspace_id, c.resolved_at, c.resolved_by_type, c.resolved_by_id FROM comment c
+SELECT c.id, c.issue_id, c.author_type, c.author_id, c.content, c.type, c.created_at, c.updated_at, c.parent_id, c.workspace_id, c.resolved_at, c.resolved_by_type, c.resolved_by_id, c.worktree_id FROM comment c
 WHERE c.id = (SELECT id FROM root_of WHERE parent_id IS NULL LIMIT 1)
 `
 
@@ -224,6 +271,7 @@ func (q *Queries) GetThreadRoot(ctx context.Context, arg GetThreadRootParams) (C
 		&i.ResolvedAt,
 		&i.ResolvedByType,
 		&i.ResolvedByID,
+		&i.WorktreeID,
 	)
 	return i, err
 }
@@ -272,7 +320,7 @@ func (q *Queries) HasAgentRepliedInThread(ctx context.Context, arg HasAgentRepli
 }
 
 const listCommentsForIssue = `-- name: ListCommentsForIssue :many
-SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id FROM comment
+SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, worktree_id FROM comment
 WHERE issue_id = $1 AND workspace_id = $2
 ORDER BY created_at ASC, id ASC
 LIMIT $3
@@ -310,6 +358,7 @@ func (q *Queries) ListCommentsForIssue(ctx context.Context, arg ListCommentsForI
 			&i.ResolvedAt,
 			&i.ResolvedByType,
 			&i.ResolvedByID,
+			&i.WorktreeID,
 		); err != nil {
 			return nil, err
 		}
@@ -322,7 +371,7 @@ func (q *Queries) ListCommentsForIssue(ctx context.Context, arg ListCommentsForI
 }
 
 const listCommentsSinceForIssue = `-- name: ListCommentsSinceForIssue :many
-SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id FROM comment
+SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, worktree_id FROM comment
 WHERE issue_id = $1 AND workspace_id = $2 AND created_at > $3
 ORDER BY created_at ASC, id ASC
 LIMIT $4
@@ -365,6 +414,7 @@ func (q *Queries) ListCommentsSinceForIssue(ctx context.Context, arg ListComment
 			&i.ResolvedAt,
 			&i.ResolvedByType,
 			&i.ResolvedByID,
+			&i.WorktreeID,
 		); err != nil {
 			return nil, err
 		}
@@ -993,7 +1043,7 @@ UPDATE comment SET
     resolved_by_id = COALESCE(resolved_by_id, $3),
     updated_at = CASE WHEN resolved_at IS NULL THEN now() ELSE updated_at END
 WHERE id = $1
-RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id
+RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, worktree_id
 `
 
 type ResolveCommentParams struct {
@@ -1021,6 +1071,7 @@ func (q *Queries) ResolveComment(ctx context.Context, arg ResolveCommentParams) 
 		&i.ResolvedAt,
 		&i.ResolvedByType,
 		&i.ResolvedByID,
+		&i.WorktreeID,
 	)
 	return i, err
 }
@@ -1032,7 +1083,7 @@ UPDATE comment SET
     resolved_by_id = NULL,
     updated_at = CASE WHEN resolved_at IS NOT NULL THEN now() ELSE updated_at END
 WHERE id = $1
-RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id
+RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, worktree_id
 `
 
 // Idempotent: a no-op clear (already unresolved) just returns the row.
@@ -1053,6 +1104,7 @@ func (q *Queries) UnresolveComment(ctx context.Context, id pgtype.UUID) (Comment
 		&i.ResolvedAt,
 		&i.ResolvedByType,
 		&i.ResolvedByID,
+		&i.WorktreeID,
 	)
 	return i, err
 }
@@ -1062,7 +1114,7 @@ UPDATE comment SET
     content = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id
+RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, worktree_id
 `
 
 type UpdateCommentParams struct {
@@ -1087,6 +1139,7 @@ func (q *Queries) UpdateComment(ctx context.Context, arg UpdateCommentParams) (C
 		&i.ResolvedAt,
 		&i.ResolvedByType,
 		&i.ResolvedByID,
+		&i.WorktreeID,
 	)
 	return i, err
 }

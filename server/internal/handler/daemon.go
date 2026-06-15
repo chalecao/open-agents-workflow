@@ -1313,7 +1313,20 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 		// fresh agent session in a fresh workdir instead of resuming anything
 		// from the same conversation that produced that output.
 		if !task.ForceFreshSession {
-			if prior, err := h.Queries.GetLastTaskSession(r.Context(), db.GetLastTaskSessionParams{
+			// Handoff worktree inheritance: when a queued task carries a
+			// non-NULL work_dir it means autopilot dispatchOneHandoff wrote
+			// the SOURCE agent's last work_dir into the new row at enqueue
+			// time, so the target agent's daemon must reuse that worktree
+			// instead of the target's own prior worktree (which would be
+			// empty on a first mention anyway, or stale on a long-running
+			// handoff chain). The path is used as-is by the daemon's
+			// execenv.Reuse branch; local directory mode still disables
+			// Reuse downstream, so the user repo is never polluted.
+			// ForceFreshSession (manual rerun) takes priority over
+			// inheritance — the user asked for a clean slate.
+			if task.WorkDir.Valid && task.WorkDir.String != "" {
+				resp.PriorWorkDir = task.WorkDir.String
+			} else if prior, err := h.Queries.GetLastTaskSession(r.Context(), db.GetLastTaskSessionParams{
 				AgentID: task.AgentID,
 				IssueID: task.IssueID,
 			}); err == nil && prior.SessionID.Valid {

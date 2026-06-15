@@ -258,3 +258,37 @@ func TestValidateIssueTitleTemplate(t *testing.T) {
 		})
 	}
 }
+
+// TestLookupHandoffSourceWorkDir_InputValidation covers the early-return
+// branches of the helper that runs *before* it touches the database. The
+// happy path (and the DB error / poisoned-task paths) is exercised by the
+// integration tests that spin up a real PG; the unit test exists to lock
+// in the contract that a malformed HandoffDispatchParams never reaches
+// the SQL layer and never blocks the handoff (returns "" so the target
+// gets a fresh worktree instead).
+func TestLookupHandoffSourceWorkDir_InputValidation(t *testing.T) {
+	s := &AutopilotService{} // Queries nil — early-return branches must not dereference it.
+
+	// Missing source agent id: nothing to look up. Returning "" makes the
+	// handoff fall back to "target gets a fresh worktree" — the
+	// documented contract.
+	if got := s.lookupHandoffSourceWorkDir(t.Context(), HandoffDispatchParams{}); got != "" {
+		t.Fatalf("empty SourceID should return \"\", got %q", got)
+	}
+
+	// Issue.ID is required for the SQL parameter — without it the
+	// helper bails before the lookup. Same "" contract.
+	if got := s.lookupHandoffSourceWorkDir(t.Context(), HandoffDispatchParams{SourceID: "11111111-1111-1111-1111-111111111111"}); got != "" {
+		t.Fatalf("missing Issue.ID should return \"\", got %q", got)
+	}
+
+	// Garbage in SourceID is a programmer error (the comment-handler
+	// validates UUIDs upstream) but the helper must still degrade
+	// gracefully — no panic, no nil-deref, returns "".
+	if got := s.lookupHandoffSourceWorkDir(t.Context(), HandoffDispatchParams{
+		SourceID: "not-a-uuid",
+		Issue:    db.Issue{ID: pgtype.UUID{Valid: true, Bytes: [16]byte{1, 2, 3}}},
+	}); got != "" {
+		t.Fatalf("invalid SourceID UUID should return \"\", got %q", got)
+	}
+}

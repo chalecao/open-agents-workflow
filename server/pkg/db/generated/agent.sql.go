@@ -805,13 +805,14 @@ func (q *Queries) CreateAgent(ctx context.Context, arg CreateAgentParams) (Agent
 const createAgentTask = `-- name: CreateAgentTask :one
 INSERT INTO agent_task_queue (
     agent_id, runtime_id, issue_id, status, priority, trigger_comment_id,
-    trigger_summary, force_fresh_session, is_leader_task
+    trigger_summary, force_fresh_session, is_leader_task, work_dir
 )
 VALUES (
     $1, $2, $3, 'queued', $4, $5,
     $6,
     COALESCE($7::boolean, FALSE),
-    COALESCE($8::boolean, FALSE)
+    COALESCE($8::boolean, FALSE),
+    $9
 )
 RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, completed_at, result, error, created_at, context, runtime_id, session_id, work_dir, trigger_comment_id, chat_session_id, autopilot_run_id, attempt, max_attempts, parent_task_id, failure_reason, trigger_summary, force_fresh_session, is_leader_task, wait_reason
 `
@@ -825,8 +826,17 @@ type CreateAgentTaskParams struct {
 	TriggerSummary    pgtype.Text `json:"trigger_summary"`
 	ForceFreshSession pgtype.Bool `json:"force_fresh_session"`
 	IsLeaderTask      pgtype.Bool `json:"is_leader_task"`
+	WorkDir           pgtype.Text `json:"work_dir"`
 }
 
+// Inserts a queued task. `work_dir` is normally NULL — CompleteAgentTask
+// writes it on the running→completed transition. The autopilot handoff
+// path is the one exception: it pre-populates work_dir with the SOURCE
+// agent's most recent work_dir for the same issue, so the target agent
+// reuses the source's git worktree instead of cloning a fresh one. The
+// claim handler (handler/daemon.go) honours a non-NULL task.work_dir
+// as the inherited worktree path and skips the per-(agent, issue) prior
+// session lookup in that case.
 func (q *Queries) CreateAgentTask(ctx context.Context, arg CreateAgentTaskParams) (AgentTaskQueue, error) {
 	row := q.db.QueryRow(ctx, createAgentTask,
 		arg.AgentID,
@@ -837,6 +847,7 @@ func (q *Queries) CreateAgentTask(ctx context.Context, arg CreateAgentTaskParams
 		arg.TriggerSummary,
 		arg.ForceFreshSession,
 		arg.IsLeaderTask,
+		arg.WorkDir,
 	)
 	var i AgentTaskQueue
 	err := row.Scan(

@@ -213,6 +213,7 @@ type Comment struct {
 	ResolvedAt     pgtype.Timestamptz `json:"resolved_at"`
 	ResolvedByType pgtype.Text        `json:"resolved_by_type"`
 	ResolvedByID   pgtype.UUID        `json:"resolved_by_id"`
+	WorktreeID     pgtype.Text        `json:"worktree_id"`
 }
 
 type CommentReaction struct {

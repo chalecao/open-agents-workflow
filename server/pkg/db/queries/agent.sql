@@ -134,15 +134,24 @@ WHERE agent_id = $1
 ORDER BY created_at DESC;
 
 -- name: CreateAgentTask :one
+-- Inserts a queued task. `work_dir` is normally NULL — CompleteAgentTask
+-- writes it on the running→completed transition. The autopilot handoff
+-- path is the one exception: it pre-populates work_dir with the SOURCE
+-- agent's most recent work_dir for the same issue, so the target agent
+-- reuses the source's git worktree instead of cloning a fresh one. The
+-- claim handler (handler/daemon.go) honours a non-NULL task.work_dir
+-- as the inherited worktree path and skips the per-(agent, issue) prior
+-- session lookup in that case.
 INSERT INTO agent_task_queue (
     agent_id, runtime_id, issue_id, status, priority, trigger_comment_id,
-    trigger_summary, force_fresh_session, is_leader_task
+    trigger_summary, force_fresh_session, is_leader_task, work_dir
 )
 VALUES (
     $1, $2, $3, 'queued', $4, sqlc.narg(trigger_comment_id),
     sqlc.narg(trigger_summary),
     COALESCE(sqlc.narg('force_fresh_session')::boolean, FALSE),
-    COALESCE(sqlc.narg('is_leader_task')::boolean, FALSE)
+    COALESCE(sqlc.narg('is_leader_task')::boolean, FALSE),
+    sqlc.narg('work_dir')
 )
 RETURNING *;
 

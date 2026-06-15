@@ -724,6 +724,15 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Get("/handoff-data", h.ListIssueHandoffData)
 					r.Put("/handoff-data", h.SetIssueHandoffData)
 					r.Get("/pull-requests", h.ListPullRequestsForIssue)
+					// Worktree sidebar: list of agent worktrees for this
+					// issue, plus on-demand diff/file access. The
+					// worktree_id is the absolute filesystem path,
+					// URL-encoded by the client; chi captures it as a
+					// single segment and the handler decodes via
+					// url.PathUnescape.
+					r.Get("/worktrees", h.ListIssueWorktrees)
+					r.Get("/worktrees/{worktreeId}/diff", h.GetIssueWorktreeDiff)
+					r.Get("/worktrees/{worktreeId}/file", h.GetIssueWorktreeFile)
 				})
 			})
 

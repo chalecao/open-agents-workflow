@@ -296,6 +296,17 @@ ORDER BY p.last_activity_at ASC, p.root_id ASC, c.created_at ASC, c.id ASC;
 SELECT count(*) FROM comment
 WHERE issue_id = $1 AND workspace_id = $2;
 
+-- name: CountCommentsByWorktreeIDForIssue :many
+-- Counts comments on an issue grouped by worktree_id, used by the worktree
+-- sidebar to surface "N comments on this worktree". Includes only non-NULL
+-- worktree_id rows; user / system comments without a worktree are out of
+-- scope for the worktree panel. The handler collapses the row slice into
+-- a map[string]int64 keyed by worktree_id for O(1) lookup.
+SELECT worktree_id, count(*)::bigint AS comment_count
+FROM comment
+WHERE issue_id = $1 AND workspace_id = $2 AND worktree_id IS NOT NULL
+GROUP BY worktree_id;
+
 -- name: CountNewCommentsSince :one
 -- Counts comments on an issue created strictly after @since, ACROSS THE WHOLE
 -- ISSUE (every thread, not just the triggering one). Excludes the triggering
@@ -339,8 +350,8 @@ SELECT c.* FROM comment c
 WHERE c.id = (SELECT id FROM root_of WHERE parent_id IS NULL LIMIT 1);
 
 -- name: CreateComment :one
-INSERT INTO comment (issue_id, workspace_id, author_type, author_id, content, type, parent_id)
-VALUES ($1, $2, $3, $4, $5, $6, sqlc.narg(parent_id))
+INSERT INTO comment (issue_id, workspace_id, author_type, author_id, content, type, parent_id, worktree_id)
+VALUES ($1, $2, $3, $4, $5, $6, sqlc.narg(parent_id), sqlc.narg(worktree_id))
 RETURNING *;
 
 -- name: UpdateComment :one

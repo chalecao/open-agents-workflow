@@ -204,6 +204,10 @@ type CreateIssueParams struct {
 	HandoffData   []byte      `json:"handoff_data"`
 }
 
+// Optional handoff_data blob (jsonb). When the handler passes a non-nil
+// byte slice we insert it verbatim — the column CHECK validates object
+// shape + 8 KiB cap as the second line of defense. nil bytes mean
+// "use the column default" so the historical create path is unchanged.
 func (q *Queries) CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue, error) {
 	row := q.db.QueryRow(ctx, createIssue,
 		arg.WorkspaceID,

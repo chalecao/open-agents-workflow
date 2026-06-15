@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useRef, useState } from "react";
-import { CheckCircle2, ChevronRight, Copy, MoreHorizontal, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronRight, Copy, GitBranch, MoreHorizontal, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@multica/ui/components/ui/card";
 import { Button } from "@multica/ui/components/ui/button";
@@ -190,6 +190,54 @@ function sameIdSet(a: string[], b: string[]): boolean {
   return b.every((id) => set.has(id));
 }
 
+// ---------------------------------------------------------------------------
+// WorktreeIdBadge
+// ---------------------------------------------------------------------------
+//
+// Inline chip in the comment card header that surfaces the worktree the
+// agent was operating on. Only rendered for agent-authored comments that
+// have a non-null worktree_id (TaskService.createAgentComment stamps it
+// from the task's work_dir). Click → copies the absolute path so the
+// user can paste it into a terminal. Tooltip shows the full path because
+// the visible label is truncated for narrow cards.
+function WorktreeIdBadge({ worktreeId }: { worktreeId: string }) {
+  const { t } = useT("issues");
+  // Trim to the trailing 1–2 path components so the chip stays compact
+  // when the worktree path is deep. Full path stays in the title attr /
+  // tooltip so it's still one click away.
+  const display = (() => {
+    if (worktreeId.length <= 32) return worktreeId;
+    const parts = worktreeId.split("/").filter(Boolean);
+    if (parts.length <= 2) return worktreeId;
+    return `…/${parts.slice(-2).join("/")}`;
+  })();
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            onClick={() => {
+              void copyText(worktreeId).then((ok) => {
+                if (ok) toast.success(t(($) => $.worktree_sidebar.copied_toast));
+              });
+            }}
+            className="inline-flex items-center gap-1 rounded bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label={t(($) => $.worktree_sidebar.copy_path_action)}
+          >
+            <GitBranch className="h-2.5 w-2.5 shrink-0" />
+            <span className="font-mono truncate max-w-[120px]">{display}</span>
+          </button>
+        }
+      />
+      <TooltipContent side="top">
+        <span className="font-mono">{worktreeId}</span>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 function initialStandaloneAttachmentIds(entry: TimelineEntry): Set<string> {
   const content = entry.content ?? "";
   return new Set(
@@ -366,6 +414,9 @@ function CommentRow({
             {new Date(entry.created_at).toLocaleString()}
           </TooltipContent>
         </Tooltip>
+        {entry.worktree_id && (
+          <WorktreeIdBadge worktreeId={entry.worktree_id} />
+        )}
 
         <div className="ml-auto flex items-center gap-0.5">
           <QuickEmojiPicker
@@ -569,6 +620,9 @@ function CommentCardImpl({
                 {new Date(entry.created_at).toLocaleString()}
               </TooltipContent>
             </Tooltip>
+            {entry.worktree_id && (
+              <WorktreeIdBadge worktreeId={entry.worktree_id} />
+            )}
 
             {!open && contentPreview && (
               <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">

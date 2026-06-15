@@ -30,8 +30,9 @@
     "init:env:worktree": "bash scripts/init-worktree-env.sh .env.worktree",
     "build:daemon": "make build",
     "daemon:login": "./server/bin/multica setup self-host",
-    "daemon:start": "./server/bin/multica daemon restart",
-    "server": "make server",
+    "daemon": "./server/bin/multica daemon restart",
+    "server": "lsof -ti:8080 | xargs kill -9 2>/dev/null; make server",
+    "migrate": "make migrate-up",
     "login": "pnpm -C apps/mobile login:web"
   },
   "packageManager": "pnpm@10.28.2",
