@@ -6,8 +6,8 @@ import {
   Ban, ChevronDown, ChevronRight,
   Webhook, Copy, Check, RotateCw,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { autopilotDetailOptions, autopilotRunsOptions, autopilotRunOptions } from "@multica/core/autopilots/queries";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { autopilotDetailOptions, autopilotKeys, autopilotRunsOptions, autopilotRunOptions } from "@multica/core/autopilots/queries";
 import { projectDetailOptions } from "@multica/core/projects/queries";
 import {
   useUpdateAutopilot,
@@ -22,6 +22,7 @@ import { api } from "@multica/core/api";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { useActorName } from "@multica/core/workspace/hooks";
+import { useWSEvent } from "@multica/core/realtime";
 import { useNavigation, AppLink } from "../../navigation";
 import { BreadcrumbHeader } from "../../layout/breadcrumb-header";
 import { ActorAvatar } from "../../common/actor-avatar";
@@ -580,6 +581,7 @@ export function AutopilotDetailPage({ autopilotId }: { autopilotId: string }) {
   const wsPaths = useWorkspacePaths();
   const router = useNavigation();
   const { getActorName } = useActorName();
+  const qc = useQueryClient();
 
   const { data, isLoading } = useQuery(autopilotDetailOptions(wsId, autopilotId));
   const { data: runs = [], isLoading: runsLoading } = useQuery(autopilotRunsOptions(wsId, autopilotId));
@@ -590,6 +592,18 @@ export function AutopilotDetailPage({ autopilotId }: { autopilotId: string }) {
   const { data: project, isLoading: projectLoading } = useQuery({
     ...projectDetailOptions(wsId, projectId ?? ""),
     enabled: Boolean(projectId),
+  });
+
+  // The server publishes `autopilot:run_done` (status = completed/failed/
+  // skipped) the moment a run reaches a terminal state, and the global
+  // prefix-based refetcher in useRealtimeSync invalidates the autopilot
+  // root key. We additionally subscribe here so the runs list flips
+  // immediately, without waiting for the 100ms debounce — the user is
+  // already on this page staring at "运行中" otherwise.
+  useWSEvent("autopilot:run_done", (payload: unknown) => {
+    const p = payload as { autopilot_id?: string } | null;
+    if (p?.autopilot_id && p.autopilot_id !== autopilotId) return;
+    qc.invalidateQueries({ queryKey: autopilotKeys.runs(wsId, autopilotId) });
   });
 
   const [triggerDialogOpen, setTriggerDialogOpen] = useState(false);

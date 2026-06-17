@@ -97,17 +97,24 @@ type WorktreeFileChange struct {
 }
 
 type WorktreeDiffResponse struct {
-	ID              string              `json:"id"`
-	Branch          string              `json:"branch"`
-	BaseBranch      string              `json:"base_branch"`
-	BaseSHA         string              `json:"base_sha"`
-	HeadSHA         string              `json:"head_sha"`
-	Exists          bool                `json:"exists"`
-	Diff            string              `json:"diff"`
-	DiffTruncated   bool                `json:"diff_truncated"`
-	Untracked       []string            `json:"untracked"`
+	ID              string               `json:"id"`
+	Branch          string               `json:"branch"`
+	BaseBranch      string               `json:"base_branch"`
+	BaseSHA         string               `json:"base_sha"`
+	HeadSHA         string               `json:"head_sha"`
+	Exists          bool                 `json:"exists"`
+	// Unborn is true when the worktree is a fresh `git init` with no commits
+	// yet. `Branch` is the literal "HEAD" in that case; BaseSHA / HeadSHA /
+	// Diff / Files stay empty because there is no revision to diff against.
+	// Untracked and UnstagedFiles still surface — they only need the
+	// working tree + index. The UI uses this flag to render an empty-state
+	// instead of a "0 changes" pill that looks like the agent did nothing.
+	Unborn          bool                 `json:"unborn"`
+	Diff            string               `json:"diff"`
+	DiffTruncated   bool                 `json:"diff_truncated"`
+	Untracked       []string             `json:"untracked"`
 	Files           []WorktreeFileChange `json:"files"`
-	UnstagedSummary string              `json:"unstaged_summary"`
+	UnstagedSummary string               `json:"unstaged_summary"`
 	UnstagedFiles   []WorktreeFileChange `json:"unstaged_files"`
 }
 
@@ -360,6 +367,33 @@ func readWorktreeDiff(worktreeID string) (*WorktreeDiffResponse, error) {
 	}
 
 	resp := &WorktreeDiffResponse{ID: worktreeID, Exists: true}
+
+	// Unborn HEAD: the worktree is a fresh `git init` (or its branch
+	// got reset) with no commits. `git rev-parse --abbrev-ref HEAD`
+	// and `git diff <base>...HEAD` both fail with exit 128 in this
+	// state, so short-circuit and return an empty diff. Untracked and
+	// unstaged files still surface — they only need the working tree
+	// + index, not a commit.
+	//
+	// Detection: `git rev-parse --verify --quiet HEAD` is the cheapest
+	// "is HEAD a real commit?" probe. Exit 0 → real commit; exit 1 →
+	// unborn (or detached-but-dangling, which is the same outcome
+	// from the sidebar's perspective). Same pattern as the fallback
+	// chain in resolveBaseRef below.
+	if err := exec.Command("git", "-C", worktreeID, "rev-parse", "--verify", "--quiet", "HEAD").Run(); err != nil {
+		resp.Unborn = true
+		resp.Branch = "HEAD"
+		if out, err := gitOutput(worktreeID, "ls-files", "--others", "--exclude-standard"); err == nil {
+			resp.Untracked = splitLines(out)
+		}
+		if out, err := gitOutput(worktreeID, "status", "--porcelain"); err == nil {
+			resp.UnstagedSummary = summaryLines(out, 10)
+			if numstat, err := gitOutput(worktreeID, "diff", "--numstat"); err == nil {
+				resp.UnstagedFiles = parseNumstat(numstat)
+			}
+		}
+		return resp, nil
+	}
 
 	branch, err := gitOutput(worktreeID, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {

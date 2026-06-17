@@ -79,7 +79,8 @@ export type WSEventType =
   | "github_installation:deleted"
   | "pull_request:linked"
   | "pull_request:updated"
-  | "pull_request:unlinked";
+  | "pull_request:unlinked"
+  | "autopilot:run_done";
 
 export interface WSMessage<T = unknown> {
   type: WSEventType;
@@ -376,6 +377,12 @@ export interface InvitationRevokedPayload {
   invitee_email: string;
 }
 
+export interface AutopilotRunDonePayload {
+  run_id: string;
+  autopilot_id: string;
+  status: string;
+}
+
 /**
  * Maps every WSEventType to its payload interface. Events whose payload
  * shape isn't formally typed (server emits an object the client doesn't
@@ -462,6 +469,7 @@ export interface WSEventPayloadMap {
   "pull_request:linked": unknown;
   "pull_request:updated": unknown;
   "pull_request:unlinked": unknown;
+  "autopilot:run_done": AutopilotRunDonePayload;
 }
 
 /**

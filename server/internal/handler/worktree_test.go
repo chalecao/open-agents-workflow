@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 )
 
@@ -89,5 +92,67 @@ func TestWorktreeFileResponseBinaryShape(t *testing.T) {
 	}
 	if _, present := out["after"]; present {
 		t.Fatalf("after should be omitted for binary files: %s", string(data))
+	}
+}
+
+// Verify readWorktreeDiff short-circuits on an unborn HEAD instead of
+// erroring out on `git diff <base>...HEAD` (which fails with exit 128 when
+// no commits exist). Regression for the case where a worktree path exists
+// on disk and is a valid git repo, but has no commits — `git init` without
+// a follow-up commit, or a worktree whose branch was deleted upstream.
+// The handler should return Unborn=true with empty Diff/Files; Untracked
+// and UnstagedFiles should still surface because they only depend on the
+// working tree + index.
+func TestReadWorktreeDiffUnbornHEAD(t *testing.T) {
+	dir := t.TempDir()
+	// `git init` creates a fresh repo with no commits → HEAD is unborn.
+	cmd := exec.Command("git", "init", dir)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git init: %s: %v", out, err)
+	}
+	// Pin a stable identity so the test is reproducible.
+	for _, kv := range [][2]string{{"user.email", "test@example.com"}, {"user.name", "test"}} {
+		if out, err := exec.Command("git", "-C", dir, "config", kv[0], kv[1]).CombinedOutput(); err != nil {
+			t.Fatalf("git config %s: %s: %v", kv[0], out, err)
+		}
+	}
+	// Drop a file so the untracked / unstaged paths have something to
+	// surface. `os.WriteFile` (vs `git add`) is intentional — the test
+	// is about "fresh worktree with uncommitted files", not "staged
+	// changes".
+	if err := os.WriteFile(filepath.Join(dir, "hello.txt"), []byte("hi\n"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	resp, err := readWorktreeDiff(dir)
+	if err != nil {
+		t.Fatalf("readWorktreeDiff: %v", err)
+	}
+	if !resp.Exists {
+		t.Fatalf("expected Exists=true, got %+v", resp)
+	}
+	if !resp.Unborn {
+		t.Fatalf("expected Unborn=true, got %+v", resp)
+	}
+	if resp.Branch != "HEAD" {
+		t.Fatalf("expected Branch=HEAD, got %q", resp.Branch)
+	}
+	if resp.Diff != "" {
+		t.Fatalf("expected empty Diff, got %d bytes", len(resp.Diff))
+	}
+	if len(resp.Files) != 0 {
+		t.Fatalf("expected no Files, got %+v", resp.Files)
+	}
+	// Untracked must still surface — the sidebar relies on it to show
+	// "this branch has untracked work" before the first commit.
+	found := false
+	for _, u := range resp.Untracked {
+		if u == "hello.txt" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected hello.txt in Untracked, got %+v", resp.Untracked)
 	}
 }
