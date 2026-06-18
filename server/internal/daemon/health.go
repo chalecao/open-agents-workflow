@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/multica-ai/multica/server/internal/daemon/repocache"
+	"github.com/multica-ai/multica/server/internal/repocache"
 )
 
 // HealthResponse is returned by the daemon's local health endpoint.

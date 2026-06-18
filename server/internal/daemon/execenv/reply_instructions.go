@@ -115,6 +115,10 @@ func activeThreadID(triggerThreadID, triggerCommentID string) string {
 // (InjectRuntimeConfig) call this so the trigger comment ID and the
 // --parent value cannot drift between surfaces.
 //
+// osName is the host-OS string used to pick the Windows vs. POSIX reply
+// template. It is an explicit argument (not a package-level read) so tests
+// can pin the value without racing against each other under -race.
+//
 // The explicit "do not reuse --parent from previous turns" wording exists
 // because resumed Claude sessions keep prior turns' tool calls in context
 // and will otherwise copy the old --parent UUID forward.
@@ -141,11 +145,11 @@ func activeThreadID(triggerThreadID, triggerCommentID string) string {
 //
 // provider is retained for caller symmetry and future per-provider tweaks; the
 // guardrail itself is intentionally identical across providers.
-func BuildCommentReplyInstructions(provider, issueID, triggerCommentID string) string {
+func BuildCommentReplyInstructions(provider, issueID, triggerCommentID, osName string) string {
 	if triggerCommentID == "" {
 		return ""
 	}
-	if runtimeGOOS == "windows" {
+	if osName == "windows" {
 		return fmt.Sprintf(
 			"If you decide to reply, post it as a comment — always use the trigger comment ID below, "+
 				"do NOT reuse --parent values from previous turns in this session.\n\n"+

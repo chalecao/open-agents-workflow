@@ -38,7 +38,7 @@ func TestOpenAIClient_Do_Success(t *testing.T) {
 		t.Fatalf("auth header: got %q", gotAuth)
 	}
 	// body sanity
-	var req openaiChatRequest
+	var req chatRequest
 	if err := json.Unmarshal([]byte(gotBody), &req); err != nil {
 		t.Fatalf("request body parse: %v", err)
 	}
@@ -179,5 +179,97 @@ func TestOpenAIClient_Ping_Non2xx(t *testing.T) {
 	}
 	if upErr.StatusCode != 401 {
 		t.Fatalf("status: got %d, want 401", upErr.StatusCode)
+	}
+}
+
+// TestOpenAIClient_Chat_WithTools exercises the multi-turn tool
+// path: a request that includes a tools array must hit the wire
+// intact, and the response's tool_calls (including the JSON-encoded
+// arguments string) must round-trip back to the caller. This is
+// the contract the worker's executeTask loop depends on.
+func TestOpenAIClient_Chat_WithTools(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		buf := make([]byte, 8192)
+		n, _ := r.Body.Read(buf)
+		gotBody = string(buf[:n])
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"choices":[{
+				"message":{
+					"role":"assistant",
+					"content":"",
+					"tool_calls":[
+						{"id":"call_1","type":"function","function":{"name":"read_file","arguments":"{\"path\":\"README.md\"}"}}
+					]
+				}
+			}]
+		}`))
+	}))
+	defer srv.Close()
+
+	c := NewOpenAIClient()
+	tools := []Tool{{
+		Type: "function",
+		Function: ToolFunction{
+			Name:        "read_file",
+			Description: "Read a file from the workdir",
+			Parameters:  json.RawMessage(`{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}`),
+		},
+	}}
+	msg, err := c.Chat(context.Background(), srv.URL, "m", "k",
+		[]ChatMessage{{Role: "user", Content: "read README"}}, tools)
+	if err != nil {
+		t.Fatalf("Chat: %v", err)
+	}
+	if msg.Content != "" {
+		t.Fatalf("expected empty content, got %q", msg.Content)
+	}
+	if len(msg.ToolCalls) != 1 {
+		t.Fatalf("expected 1 tool call, got %d", len(msg.ToolCalls))
+	}
+	if msg.ToolCalls[0].Function.Name != "read_file" {
+		t.Fatalf("tool name: %q", msg.ToolCalls[0].Function.Name)
+	}
+	if msg.ToolCalls[0].ID != "call_1" {
+		t.Fatalf("tool id: %q", msg.ToolCalls[0].ID)
+	}
+	if msg.ToolCalls[0].Function.Arguments != `{"path":"README.md"}` {
+		t.Fatalf("tool args: %q", msg.ToolCalls[0].Function.Arguments)
+	}
+
+	// Wire-shape sanity: tools array must be present and non-empty.
+	var req chatRequest
+	if err := json.Unmarshal([]byte(gotBody), &req); err != nil {
+		t.Fatalf("parse body: %v", err)
+	}
+	if len(req.Tools) != 1 {
+		t.Fatalf("tools on wire: got %d, want 1", len(req.Tools))
+	}
+	if req.Tools[0].Function.Name != "read_file" {
+		t.Fatalf("tool wire name: %q", req.Tools[0].Function.Name)
+	}
+}
+
+// TestOpenAIClient_Chat_OmitToolsWhenNil guarantees the legacy
+// "no tools" shape is byte-identical to the pre-tool request —
+// Do() callers and any provider that rejects unknown fields both
+// rely on the tools key being absent, not an empty array.
+func TestOpenAIClient_Chat_OmitToolsWhenNil(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		buf := make([]byte, 4096)
+		n, _ := r.Body.Read(buf)
+		gotBody = string(buf[:n])
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"ok"}}]}`))
+	}))
+	defer srv.Close()
+	c := NewOpenAIClient()
+	if _, err := c.Chat(context.Background(), srv.URL, "m", "k",
+		[]ChatMessage{{Role: "user", Content: "hi"}}, nil); err != nil {
+		t.Fatalf("Chat: %v", err)
+	}
+	if strings.Contains(gotBody, `"tools"`) {
+		t.Fatalf("tools key must be omitted when nil; body=%s", gotBody)
 	}
 }

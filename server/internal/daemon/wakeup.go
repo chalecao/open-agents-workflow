@@ -125,7 +125,7 @@ func (d *Daemon) runTaskWakeupConnection(ctx context.Context, runtimeIDs []strin
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- d.readTaskWakeupMessages(conn, taskWakeups)
+		errCh <- d.readTaskWakeupMessages(conn, taskWakeups, writes)
 	}()
 
 	// Defer cleanup must shut goroutines down in this order:
@@ -255,7 +255,7 @@ func (d *Daemon) handleWSHeartbeatAck(ctx context.Context, ack *HeartbeatRespons
 	d.handleHeartbeatActions(ctx, ack.RuntimeID, ack)
 }
 
-func (d *Daemon) readTaskWakeupMessages(conn *websocket.Conn, taskWakeups chan<- struct{}) error {
+func (d *Daemon) readTaskWakeupMessages(conn *websocket.Conn, taskWakeups chan<- struct{}, responses chan<- []byte) error {
 	conn.SetReadLimit(64 * 1024)
 	for {
 		_, raw, err := conn.ReadMessage()
@@ -287,6 +287,18 @@ func (d *Daemon) readTaskWakeupMessages(conn *websocket.Conn, taskWakeups chan<-
 				continue
 			}
 			d.handleWSHeartbeatAck(context.Background(), &ack)
+		case protocol.EventDaemonRPCRequest:
+			// Server-→-daemon RPC. The server
+			// multiplexes many in-flight calls
+			// by RequestID; this goroutine
+			// dispatches each one to the
+			// registered handler and sends back
+			// an EventDaemonRPCResponse on the
+			// same conn. The dispatcher lives in
+			// the daemon so the wakeup loop
+			// stays short; see handleRPCRequest
+			// and the llmtools registry.
+			d.handleRPCRequest(conn, responses, msg.Payload)
 		}
 	}
 }

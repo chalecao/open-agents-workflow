@@ -49,11 +49,13 @@ const (
 	runtimeManagedSeparator = "\n\n"
 )
 
-// runtimeGOOS is the host-platform string used by buildMetaSkillContent and
-// BuildCommentReplyInstructions to emit Windows-specific guidance. Defaults
-// to runtime.GOOS; tests override it to exercise the cross-platform branches
-// deterministically without having to run on every target OS.
-var runtimeGOOS = runtime.GOOS
+// runtimeGOOS used to be the package-level string that buildMetaSkillContent
+// and BuildCommentReplyInstructions read to emit Windows-specific guidance.
+// It is no longer a variable: production callers now pass runtime.GOOS
+// explicitly, and tests pass "linux" / "windows" / "darwin" literals. The
+// old override pattern (assign the var, t.Cleanup to restore) caused real
+// data races under -race because Go runs sibling subtests in parallel and a
+// shared mutable string cannot satisfy the race detector.
 
 // sanitizeNameForBriefMarkdown turns a possibly-multiline display name into a
 // single-line, plain-text token that is safe to embed inside markdown inline
@@ -141,7 +143,17 @@ func formatProjectResource(r ProjectResourceForEnv) string {
 // For Antigravity: writes {workDir}/AGENTS.md  (agy CLI reads AGENTS.md natively; skills discovered natively from .agents/skills/ — see https://antigravity.google/docs/gcli-migration)
 // For QoderCli:    writes {workDir}/AGENTS.md  (qodercli reads AGENTS.md natively; skills auto-discovered from project skills dirs)
 func InjectRuntimeConfig(workDir, provider string, ctx TaskContextForEnv) (string, error) {
-	content := buildMetaSkillContent(provider, ctx)
+	return injectRuntimeConfigWithOS(workDir, provider, ctx, runtime.GOOS)
+}
+
+// injectRuntimeConfigWithOS is the test-friendly form of InjectRuntimeConfig
+// that lets the caller pin the host-OS string. Production code should keep
+// using InjectRuntimeConfig (which always uses runtime.GOOS); tests that
+// need to exercise the Windows branch pass "windows" here so the build is
+// deterministic across hosts and does not race against other tests that
+// also need a different osName.
+func injectRuntimeConfigWithOS(workDir, provider string, ctx TaskContextForEnv, osName string) (string, error) {
+	content := buildMetaSkillContent(provider, ctx, osName)
 	path := runtimeConfigPath(workDir, provider)
 	if path == "" {
 		// Unknown provider — skip config injection, prompt-only mode.
@@ -341,7 +353,12 @@ func CleanupRuntimeConfig(workDir, provider string) error {
 
 // buildMetaSkillContent generates the meta skill markdown that teaches the agent
 // about the MultiAgent runtime environment and available CLI tools.
-func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
+//
+// osName is the host-OS string used to emit Windows-specific guidance. It is
+// an explicit argument (rather than a package-level read) so production code
+// can pass runtime.GOOS once per call and tests can pass "linux" / "windows"
+// literals without racing against other tests.
+func buildMetaSkillContent(provider string, ctx TaskContextForEnv, osName string) string {
 	var b strings.Builder
 
 	b.WriteString("# MultiAgent Agent Runtime\n\n")
@@ -466,7 +483,7 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 	// Windows → file (stdin pipes drop non-ASCII), Linux/macOS → quoted HEREDOC
 	// over stdin (the quoted delimiter blocks backtick / `$()` / `$VAR`).
 	b.WriteString("## Comment Formatting\n\n")
-	if runtimeGOOS == "windows" {
+	if osName == "windows" {
 		b.WriteString("On Windows, **always write the comment body to a UTF-8 file with your file-write tool first, then post it with `--content-file <path>`** — do NOT pipe via `--content-stdin`. PowerShell 5.1's `$OutputEncoding` defaults to ASCIIEncoding when piping to a native command, silently dropping non-ASCII characters as `?` before they reach `multica.exe`. Never use inline `--content` for agent-authored comments. ")
 		b.WriteString("Keep the same `--parent` value from the trigger comment when replying. ")
 		b.WriteString("Do not compress a multi-paragraph answer into one line and do not rely on `\\n` escapes.\n\n")
@@ -612,7 +629,7 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 		}
 		b.WriteString("6. If a reply IS warranted: do any requested work first, then **decide whether to include any `@mention` link.** The default is NO mention. Only mention when you are escalating to a human owner who is not yet involved, delegating a concrete new sub-task to another agent for the first time, or the user explicitly asked you to loop someone in. Never @mention the agent you are replying to as a thank-you or sign-off.\n")
 		b.WriteString("7. **If you reply, post it as a comment — this step is mandatory when you reply.** Text in your terminal or run logs is NOT delivered to the user. ")
-		b.WriteString(BuildCommentReplyInstructions(provider, ctx.IssueID, ctx.TriggerCommentID))
+		b.WriteString(BuildCommentReplyInstructions(provider, ctx.IssueID, ctx.TriggerCommentID, osName))
 		b.WriteString("8. Before exiting: only if this run produced a fact that clears the high bar (important AND likely to be re-read by future runs on this same issue, e.g. a new PR URL or deploy URL), or you noticed a metadata key from entry that is now stale, pin or clear it via `multica issue metadata set`/`delete`. Most runs write nothing here — that is the expected outcome, not a gap. When in doubt, do not write. See the `## Issue Metadata` section above for the full bar.\n")
 		b.WriteString("9. Do NOT change the issue status unless the comment explicitly asks for it\n\n")
 	} else {

@@ -1482,19 +1482,13 @@ func TestInjectRuntimeConfigRequiresExplicitCommentPost(t *testing.T) {
 // lists all three input modes as available, and the legacy over-broad
 // `--description-stdin` / "MUST pipe via stdin" phrasings (#1795 / #1851, which
 // broke Windows non-ASCII) must NOT reappear.
-//
-// Not parallel: mutates the package-level runtimeGOOS.
 func TestInjectRuntimeConfigCommentGuardrailIsProviderAgnostic(t *testing.T) {
-	saved := runtimeGOOS
-	t.Cleanup(func() { runtimeGOOS = saved })
-
 	for _, host := range []string{"linux", "darwin", "windows"} {
 		for _, provider := range []string{"claude", "opencode", "openclaw", "hermes", "kimi", "kiro", "cursor", "gemini"} {
 			t.Run(provider+"/"+host, func(t *testing.T) {
-				runtimeGOOS = host
 				dir := t.TempDir()
-				if _, err := InjectRuntimeConfig(dir, provider, TaskContextForEnv{IssueID: "issue-1"}); err != nil {
-					t.Fatalf("InjectRuntimeConfig failed: %v", err)
+				if _, err := injectRuntimeConfigWithOS(dir, provider, TaskContextForEnv{IssueID: "issue-1"}, host); err != nil {
+					t.Fatalf("injectRuntimeConfigWithOS failed: %v", err)
 				}
 
 				configFile := "CLAUDE.md"
@@ -1555,21 +1549,15 @@ func TestInjectRuntimeConfigCommentGuardrailIsProviderAgnostic(t *testing.T) {
 // non-Windows hosts for EVERY provider, not just Codex. Post-MUL-2904 the
 // guardrail is provider-agnostic because the corruption is shell-driven; the
 // quoted delimiter is what blocks backtick / `$()` substitution in the body.
-//
-// Not parallel: mutates the package-level runtimeGOOS.
 func TestInjectRuntimeConfigLinuxCommentFormattingEmphasizesStdin(t *testing.T) {
-	saved := runtimeGOOS
-	t.Cleanup(func() { runtimeGOOS = saved })
-	runtimeGOOS = "linux"
-
 	for _, provider := range []string{"codex", "claude", "opencode"} {
 		t.Run(provider, func(t *testing.T) {
 			dir := t.TempDir()
-			if _, err := InjectRuntimeConfig(dir, provider, TaskContextForEnv{
+			if _, err := injectRuntimeConfigWithOS(dir, provider, TaskContextForEnv{
 				IssueID:          "issue-1",
 				TriggerCommentID: "comment-1",
-			}); err != nil {
-				t.Fatalf("InjectRuntimeConfig failed: %v", err)
+			}, "linux"); err != nil {
+				t.Fatalf("injectRuntimeConfigWithOS failed: %v", err)
 			}
 			fileName := "CLAUDE.md"
 			if provider != "claude" {
@@ -1607,16 +1595,10 @@ func TestInjectRuntimeConfigLinuxCommentFormattingEmphasizesStdin(t *testing.T) 
 // instead of `--content-stdin`. PowerShell 5.1 / cmd.exe re-encode piped
 // HEREDOC bytes through the active console codepage and silently drop
 // non-ASCII as `?` before reaching `multica.exe` (#2198 / #2236 / #2376).
-//
-// Not parallel: mutates the package-level runtimeGOOS.
 func TestInjectRuntimeConfigCodexWindowsUsesContentFile(t *testing.T) {
-	saved := runtimeGOOS
-	t.Cleanup(func() { runtimeGOOS = saved })
-	runtimeGOOS = "windows"
-
 	dir := t.TempDir()
-	if _, err := InjectRuntimeConfig(dir, "codex", TaskContextForEnv{IssueID: "issue-1"}); err != nil {
-		t.Fatalf("InjectRuntimeConfig failed: %v", err)
+	if _, err := injectRuntimeConfigWithOS(dir, "codex", TaskContextForEnv{IssueID: "issue-1"}, "windows"); err != nil {
+		t.Fatalf("injectRuntimeConfigWithOS failed: %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
 	if err != nil {
@@ -3409,7 +3391,7 @@ func TestBuildMetaSkillContentEmitsRequestingUser(t *testing.T) {
 		AgentID:                          "agent-1",
 		RequestingUserName:               "Jiayuan",
 		RequestingUserProfileDescription: "Backend engineer (Go + Postgres).\nLikes terse PRs.",
-	})
+	}, "linux")
 
 	for _, want := range []string{
 		"## Requesting User",
@@ -3449,7 +3431,7 @@ func TestBuildMetaSkillContentSanitizesRequestingUserName(t *testing.T) {
 		AgentID:                          "agent-1",
 		RequestingUserName:               malicious,
 		RequestingUserProfileDescription: "Backend engineer.",
-	})
+	}, "linux")
 
 	if !strings.Contains(content, "## Requesting User") {
 		t.Fatalf("expected requesting-user section in brief\n---\n%s", content)
@@ -3541,7 +3523,7 @@ func TestBuildMetaSkillContentNormalizesDescriptionLineEndings(t *testing.T) {
 				AgentID:                          "agent-1",
 				RequestingUserName:               "Jiayuan",
 				RequestingUserProfileDescription: tc.desc,
-			})
+			}, "linux")
 			if !strings.Contains(content, "## Requesting User") {
 				t.Fatalf("expected requesting-user section\n---\n%s", content)
 			}
@@ -3575,7 +3557,7 @@ func TestBuildMetaSkillContentOmitsRequestingUserWhenEmpty(t *testing.T) {
 		AgentID:                          "agent-1",
 		RequestingUserName:               "Jiayuan",
 		RequestingUserProfileDescription: "   \n  ",
-	})
+	}, "linux")
 
 	if strings.Contains(content, "## Requesting User") {
 		t.Errorf("expected no requesting-user heading for empty description\n---\n%s", content)
@@ -3957,18 +3939,14 @@ func TestInjectRuntimeConfigIssueMetadataSectionScope(t *testing.T) {
 func TestInjectRuntimeConfigIssueMetadataCodexFormattingUnchanged(t *testing.T) {
 	t.Parallel()
 
-	oldGOOS := runtimeGOOS
-	t.Cleanup(func() { runtimeGOOS = oldGOOS })
-
 	t.Run("linux_heredoc", func(t *testing.T) {
-		runtimeGOOS = "linux"
 		dir := t.TempDir()
 		ctx := TaskContextForEnv{
 			IssueID:          "issue-md-codex",
 			TriggerCommentID: "comment-md-codex",
 		}
-		if _, err := InjectRuntimeConfig(dir, "codex", ctx); err != nil {
-			t.Fatalf("InjectRuntimeConfig failed: %v", err)
+		if _, err := injectRuntimeConfigWithOS(dir, "codex", ctx, "linux"); err != nil {
+			t.Fatalf("injectRuntimeConfigWithOS failed: %v", err)
 		}
 		data, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
 		if err != nil {
@@ -3995,14 +3973,13 @@ func TestInjectRuntimeConfigIssueMetadataCodexFormattingUnchanged(t *testing.T) 
 	})
 
 	t.Run("windows_content_file", func(t *testing.T) {
-		runtimeGOOS = "windows"
 		dir := t.TempDir()
 		ctx := TaskContextForEnv{
 			IssueID:          "issue-md-codex-win",
 			TriggerCommentID: "comment-md-codex-win",
 		}
-		if _, err := InjectRuntimeConfig(dir, "codex", ctx); err != nil {
-			t.Fatalf("InjectRuntimeConfig failed: %v", err)
+		if _, err := injectRuntimeConfigWithOS(dir, "codex", ctx, "windows"); err != nil {
+			t.Fatalf("injectRuntimeConfigWithOS failed: %v", err)
 		}
 		data, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
 		if err != nil {

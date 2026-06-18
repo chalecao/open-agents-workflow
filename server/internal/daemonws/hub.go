@@ -94,6 +94,18 @@ type Hub struct {
 
 	kindMu       sync.RWMutex
 	kindRecorder MessageKindRecorder
+
+	// pendingMu guards the in-flight RPC map. Lock contention is
+	// independent from `mu` (the connection map) because the
+	// request/response traffic is short and bursty while the
+	// connection lifetime is long — separating them keeps a slow
+	// daemon from blocking daemon register/unregister.
+	pendingMu sync.Mutex
+	// pending maps request_id → reply channel. Entries are added
+	// by Request() before the frame is enqueued, and removed by
+	// the matching deliver or by the request's defer on context
+	// cancel. See rpc.go for the full concurrency model.
+	pending map[string]chan protocol.DaemonRPCResponsePayload
 }
 
 func NewHub() *Hub {
@@ -108,6 +120,7 @@ func NewHub() *Hub {
 		},
 		clients:   make(map[*client]bool),
 		byRuntime: make(map[string]map[*client]bool),
+		pending:   make(map[string]chan protocol.DaemonRPCResponsePayload),
 	}
 }
 
@@ -391,6 +404,12 @@ func (c *client) handleFrame(raw []byte) {
 	switch msg.Type {
 	case protocol.EventDaemonHeartbeat:
 		c.handleHeartbeatFrame(msg.Payload)
+	case protocol.EventDaemonRPCResponse:
+		// Multiplexed RPC reply — matches a pending
+		// Request() call by request_id, unblocks the
+		// caller's goroutine. See rpc.go for the
+		// in-flight bookkeeping.
+		c.hub.handleRPCResponse(msg.Payload)
 	default:
 		// Unknown app messages are intentionally ignored for forward
 		// compatibility with future daemon → server message types.

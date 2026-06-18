@@ -117,6 +117,13 @@ const (
 	EventDaemonHeartbeatAck  = "daemon:heartbeat_ack"
 	EventDaemonRegister      = "daemon:register"
 	EventDaemonTaskAvailable = "daemon:task_available"
+	// EventDaemonRPCRequest / EventDaemonRPCResponse carry request/response
+	// traffic for the LLM worker's tool ops against a daemon that owns a
+	// local_directory project. They ride the same WebSocket connection as
+	// the heartbeat + task_available frames; RequestID in the payload
+	// disambiguates the in-flight multiplexed calls.
+	EventDaemonRPCRequest  = "daemon:rpc_request"
+	EventDaemonRPCResponse = "daemon:rpc_response"
 
 	// GitHub integration events
 	EventGitHubInstallationCreated = "github_installation:created"

@@ -500,6 +500,68 @@ func (q *Queries) ListArchivedAgentIDsByRuntime(ctx context.Context, runtimeID p
 	return items, nil
 }
 
+const listOnlineRuntimesByDaemonID = `-- name: ListOnlineRuntimesByDaemonID :many
+SELECT id, workspace_id, daemon_id, name, runtime_mode, provider, status, device_info, metadata, last_seen_at, created_at, updated_at, owner_id, legacy_daemon_id, visibility FROM agent_runtime
+WHERE workspace_id = $1
+  AND LOWER(daemon_id) = LOWER($2)
+  AND status = 'online'
+ORDER BY last_seen_at DESC
+`
+
+type ListOnlineRuntimesByDaemonIDParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Lower       string      `json:"lower"`
+}
+
+// Lists every online runtime owned by a particular daemon in a workspace.
+// Used by the LLM worker to find the runtime_id it should use as the dispatch
+// key when sending RPCs against a local_directory project resource — the
+// runtime that CLAIMED the LLM task is the openai-http runtime (which has
+// no daemon WebSocket), so the worker has to look up a separate runtime
+// owned by the same daemon that owns the local_path. Returns many because
+// a single daemon may register multiple runtimes (one per provider);
+// callers pick the first online row.
+//
+// Comparison is case-insensitive (LOWER on both sides) for the same
+// hostname-casing reason FindLegacyRuntimesByDaemonID calls out: a daemon's
+// daemon_id is hostname-derived and re-registration across reboots / mDNS
+// state changes can produce case drift.
+func (q *Queries) ListOnlineRuntimesByDaemonID(ctx context.Context, arg ListOnlineRuntimesByDaemonIDParams) ([]AgentRuntime, error) {
+	rows, err := q.db.Query(ctx, listOnlineRuntimesByDaemonID, arg.WorkspaceID, arg.Lower)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AgentRuntime{}
+	for rows.Next() {
+		var i AgentRuntime
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.DaemonID,
+			&i.Name,
+			&i.RuntimeMode,
+			&i.Provider,
+			&i.Status,
+			&i.DeviceInfo,
+			&i.Metadata,
+			&i.LastSeenAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.OwnerID,
+			&i.LegacyDaemonID,
+			&i.Visibility,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockAgentRuntime = `-- name: LockAgentRuntime :one
 SELECT id, workspace_id, daemon_id, name, runtime_mode, provider, status, device_info, metadata, last_seen_at, created_at, updated_at, owner_id, legacy_daemon_id, visibility FROM agent_runtime
 WHERE id = $1

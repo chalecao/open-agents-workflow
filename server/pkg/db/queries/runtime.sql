@@ -221,6 +221,26 @@ WHERE status = 'active'
 -- still point at them. Returns ids only — the caller only needs the set.
 SELECT id FROM agent WHERE runtime_id = $1 AND archived_at IS NOT NULL;
 
+-- name: ListOnlineRuntimesByDaemonID :many
+-- Lists every online runtime owned by a particular daemon in a workspace.
+-- Used by the LLM worker to find the runtime_id it should use as the dispatch
+-- key when sending RPCs against a local_directory project resource — the
+-- runtime that CLAIMED the LLM task is the openai-http runtime (which has
+-- no daemon WebSocket), so the worker has to look up a separate runtime
+-- owned by the same daemon that owns the local_path. Returns many because
+-- a single daemon may register multiple runtimes (one per provider);
+-- callers pick the first online row.
+--
+-- Comparison is case-insensitive (LOWER on both sides) for the same
+-- hostname-casing reason FindLegacyRuntimesByDaemonID calls out: a daemon's
+-- daemon_id is hostname-derived and re-registration across reboots / mDNS
+-- state changes can produce case drift.
+SELECT * FROM agent_runtime
+WHERE workspace_id = $1
+  AND LOWER(daemon_id) = LOWER($2)
+  AND status = 'online'
+ORDER BY last_seen_at DESC;
+
 -- name: FindLegacyRuntimesByDaemonID :many
 -- Looks up runtime rows keyed on a prior (hostname-derived) daemon_id. Used
 -- at register-time to find rows owned by the same machine under its old

@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/multica-ai/multica/server/internal/daemon/repocache"
+	"github.com/multica-ai/multica/server/internal/repocache"
 	"github.com/multica-ai/multica/server/pkg/agent"
 )
 

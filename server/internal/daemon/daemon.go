@@ -17,7 +17,7 @@ import (
 
 	"github.com/multica-ai/multica/server/internal/cli"
 	"github.com/multica-ai/multica/server/internal/daemon/execenv"
-	"github.com/multica-ai/multica/server/internal/daemon/repocache"
+	"github.com/multica-ai/multica/server/internal/repocache"
 	"github.com/multica-ai/multica/server/pkg/agent"
 	"github.com/multica-ai/multica/server/pkg/taskfailure"
 )
@@ -158,6 +158,15 @@ type Daemon struct {
 	// deleted bare clone and an unrelated `not empty` cleanup failure.
 	bgSyncs sync.WaitGroup
 
+	// llmRPC dispatches server-→-daemon RPC requests that
+	// drive the LLM worker's tool ops against a local_directory
+	// project (read_file / write_file / list_dir / run_shell /
+	// git_status / git_diff / git_commit / init_worktree /
+	// cleanup_worktree). Initialised in New() with the
+	// localPathLocks field so handlers can take the per-path
+	// mutex the same way the CLI runtime does.
+	llmRPC *llmRPCDispatcher
+
 	runner             taskRunner    // executes agent tasks; set to d.runTask by New(), overridable in tests
 	cancelPollInterval time.Duration // how often handleTask polls for server-side cancellation; overridable in tests
 	// runUpdateFn executes the brew-or-download upgrade. Set to d.runUpdate by
@@ -189,10 +198,17 @@ func New(cfg Config, logger *slog.Logger) *Daemon {
 		reregisterNextAttempt:     make(map[string]time.Time),
 		reregisterLastCompletedAt: make(map[string]time.Time),
 		taskRepoHints:             make(map[string]map[string]string),
+		bgSyncs:                   sync.WaitGroup{},
 		cancelPollInterval:        5 * time.Second,
 	}
 	d.runner = taskRunnerFunc(d.runTask)
 	d.runUpdateFn = d.runUpdate
+	// Wire the LLM RPC dispatcher now that d is fully
+	// constructed. The dispatcher holds d via a back-pointer
+	// (it needs d.localPathLocks, d.recoveryContext, d.logger)
+	// so it has to come AFTER the struct literal, not inside
+	// it.
+	d.llmRPC = newLLMRPCDispatcher(d)
 	return d
 }
 

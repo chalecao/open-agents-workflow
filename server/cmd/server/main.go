@@ -371,6 +371,65 @@ func main() {
 	// sweepCtx so it winds down alongside the other long-running
 	// workers after the HTTP server has drained.
 	llmWorker := llmexec.NewWorker(queries, h.LLMKeyBox, taskSvc, taskSvc, taskSvc, slog.Default())
+	// DaemonHub wires the LLM worker's local_directory
+	// project path: tasks whose issue's project carries a
+	// local_directory resource have their file / shell / git
+	// ops dispatched as RPCs to the daemon that owns the
+	// local_path. daemonHub was already created above
+	// (TaskWakeupNotifier + RealTimeBridge for live
+	// task_available frames); sharing the same instance lets
+	// the worker's Request() calls reuse the open WebSocket
+	// connections.
+	llmWorker.DaemonHub = daemonHub
+	// RequestTimeout mirrors the per-RPC ceiling the daemon
+	// enforces on its side (llmtools.handleInitWorktree uses
+	// the same 60s for the path-mutex acquire; the per-op
+	// handlers fall back to whatever the tool's own timeout
+	// says). 60s is the same default the daemon's per-call
+	// context uses, so a stuck handler on either side
+	// surfaces as ErrDaemonRPCTimeout to the tool loop.
+	llmWorker.RequestTimeout = envDuration("MULTICA_LLM_RPC_TIMEOUT", 60*time.Second)
+	// ToolsEnabled flips the LLM worker from the legacy
+	// single-turn plain-text path to the multi-turn tool/
+	// function-calling path. The model gets a workdir sandbox
+	// and a tool belt (read_file / write_file / list_dir /
+	// run_shell / git_status / git_diff / git_commit), and the
+	// result envelope gains a `tool_audit` object with the list
+	// of created / modified / deleted files and any commit SHAs.
+	//
+	// Default off — providers that don't support function
+	// calling (or operators that aren't ready to give the model
+	// filesystem access) keep the old behaviour. Set
+	// MULTICA_LLM_TOOLS_ENABLED=1 to opt in. When the task
+	// has a project repo, the per-task worktree is a real
+	// `git worktree add` against a per-workspace bare cache —
+	// the same on-disk shape the daemon's CLI runtime uses,
+	// so LLM tasks and CLI tasks in the same workspace share
+	// the bare cache. Override MULTICA_LLM_REPOCACHE_PARENT
+	// and MULTICA_LLM_WORKTREE_PARENT to point at a dedicated
+	// SSD volume when LLM tasks are expected to handle large
+	// repos.
+	llmWorker.ToolsEnabled = os.Getenv("MULTICA_LLM_TOOLS_ENABLED") == "1"
+	// RepocacheParent + WorktreeParent mirror the daemon's
+	// CLI-runtime worktree layout: the bare repo cache is
+	// shared per workspace (fast incremental fetches across
+	// tasks in the same workspace) and the per-task worktree
+	// is freshly allocated under WorktreeParent. Defaults
+	// fall back to os.TempDir() (empty / unset), but
+	// production deployments should point both at a dedicated
+	// SSD volume — the per-task clone / checkout happens
+	// there, so disk speed directly affects cold-start
+	// latency.
+	llmWorker.RepocacheParent = os.Getenv("MULTICA_LLM_REPOCACHE_PARENT")
+	llmWorker.WorktreeParent = os.Getenv("MULTICA_LLM_WORKTREE_PARENT")
+	// Tool-loop tuning knobs. Use the same envPositiveInt /
+	// envDuration helpers the rest of main.go uses for env
+	// config (REALTIME_RELAY_*, etc.) so a malformed value
+	// (negative, non-numeric, malformed duration) is logged
+	// and the default is kept — a typo in the env file should
+	// never prevent the worker from starting.
+	llmWorker.ToolMaxTurns = envPositiveInt("MULTICA_LLM_TOOL_MAX_TURNS", 20)
+	llmWorker.ToolTimeout = envDuration("MULTICA_LLM_TOOL_TIMEOUT", 60*time.Second)
 	if llmWorker.Enabled() {
 		go func() {
 			if err := llmWorker.Run(sweepCtx); err != nil && !errors.Is(err, context.Canceled) {
