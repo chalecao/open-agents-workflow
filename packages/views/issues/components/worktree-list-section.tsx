@@ -37,6 +37,7 @@ import type {
 } from "@multica/core/api/schemas";
 import { useT } from "../../i18n";
 import { ScrollArea } from "@multica/ui/components/ui/scroll-area";
+import { CodeBlock } from "@multica/ui/markdown/CodeBlock";
 
 // ============================================================================
 // WorktreeListSection

@@ -704,11 +704,27 @@ func readWorktreeFile(worktreeID, relPath string) (*WorktreeFileResponse, error)
 
 	resp := &WorktreeFileResponse{ID: worktreeID, Path: relPath, Exists: true}
 
+	// Check if HEAD is unborn (empty repo with no commits).
+	// `git rev-parse --verify --quiet HEAD` returns exit 1 for unborn HEAD.
+	isUnborn := exec.Command("git", "-C", worktreeID, "rev-parse", "--verify", "--quiet", "HEAD").Run() != nil
+
+	// Try to get branch and refs. If the worktree is not a git repo or
+	// HEAD is unborn, we can still read the live file content.
 	branch, err := gitOutput(worktreeID, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
+		// If HEAD is unborn or not a git repo, just read the file directly.
+		if isUnborn || strings.Contains(err.Error(), "not a git repository") {
+			return readPlainFile(worktreeID, relPath)
+		}
 		return nil, fmt.Errorf("read branch: %w", err)
 	}
 	branch = strings.TrimSpace(branch)
+
+	// If HEAD is unborn, skip the git operations and just read the file.
+	if isUnborn {
+		return readPlainFile(worktreeID, relPath)
+	}
+
 	baseRef, err := resolveBaseRef(worktreeID, branch)
 	if err != nil {
 		return nil, fmt.Errorf("resolve base ref: %w", err)
@@ -1001,4 +1017,63 @@ func truncateBytes(buf []byte, max int) []byte {
 		return buf
 	}
 	return buf[:max]
+}
+
+// readPlainFile reads a file directly from the filesystem without using
+// git. Used when the worktree is not a git repository. Returns the file
+// content as the "after" side, with empty "before" since there's no git
+// history to compare against.
+func readPlainFile(worktreeID, relPath string) (*WorktreeFileResponse, error) {
+	livePath := filepath.Join(worktreeID, relPath)
+	if info, err := os.Stat(livePath); err != nil {
+		if os.IsNotExist(err) {
+			return &WorktreeFileResponse{
+				ID:     worktreeID,
+				Path:   relPath,
+				Exists: true,
+			}, nil
+		}
+		return nil, fmt.Errorf("stat file: %w", err)
+	} else if info.IsDir() {
+		return &WorktreeFileResponse{
+			ID:     worktreeID,
+			Path:   relPath,
+			Exists: true,
+		}, nil
+	}
+
+	f, err := os.Open(livePath)
+	if err != nil {
+		return nil, fmt.Errorf("open file: %w", err)
+	}
+	defer f.Close()
+
+	// Peek the first 8 KiB for a NUL byte — the universal "binary"
+	// detector. Cheap, and matches the rule git itself uses.
+	head := make([]byte, 8192)
+	n, _ := f.Read(head)
+	if bytes.IndexByte(head[:n], 0) >= 0 {
+		return &WorktreeFileResponse{
+			ID:     worktreeID,
+			Path:   relPath,
+			Exists: true,
+			Binary: true,
+		}, nil
+	}
+
+	buf, err := os.ReadFile(livePath)
+	if err != nil {
+		return nil, fmt.Errorf("read file: %w", err)
+	}
+	original := int64(len(buf))
+	buf = truncateBytes(buf, worktreeMaxFileBytes)
+
+	return &WorktreeFileResponse{
+		ID:        worktreeID,
+		Path:      relPath,
+		Exists:    true,
+		After:     string(buf),
+		AfterBytes: original,
+		Truncated: original > worktreeMaxFileBytes,
+	}, nil
 }
