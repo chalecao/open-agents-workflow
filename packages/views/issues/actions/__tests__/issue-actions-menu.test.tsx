@@ -125,6 +125,8 @@ const mockIssue: Issue = {
   start_date: null,
   due_date: null,
   project_id: null,
+  metadata: {},
+  handoff_data: {},
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
 } as Issue;
@@ -163,6 +165,7 @@ describe("IssueActionsDropdown", () => {
     expect(screen.getByText("Assignee")).toBeInTheDocument();
     expect(screen.getByText("Due date")).toBeInTheDocument();
     expect(screen.getByText("Copy link")).toBeInTheDocument();
+    expect(screen.getByText("Duplicate issue")).toBeInTheDocument();
     expect(screen.getByText("More")).toBeInTheDocument();
     expect(screen.getByText("Delete issue")).toBeInTheDocument();
     // Relationship actions are hidden inside the "More" submenu by default.
@@ -214,6 +217,29 @@ describe("IssueActionsDropdown", () => {
       identifier: "TES-1",
       onDeletedNavigateTo: "/test/issues",
     });
+  });
+
+  it("clicking Duplicate issue opens the create-issue modal seeded with the source issue", async () => {
+    render(
+      wrap(
+        <IssueActionsDropdown
+          issue={mockIssue}
+          trigger={<button data-testid="trigger">Menu</button>}
+        />,
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("trigger"));
+    fireEvent.click(await screen.findByText("Duplicate issue"));
+
+    expect(mockOpenModal).toHaveBeenCalledWith(
+      "create-issue",
+      expect.objectContaining({
+        title: mockIssue.title,
+        status: mockIssue.status,
+        priority: mockIssue.priority,
+      }),
+    );
   });
 });
 

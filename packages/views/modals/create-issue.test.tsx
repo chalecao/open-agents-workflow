@@ -658,4 +658,31 @@ describe("CreateIssueModal", () => {
 
     expect(mockSetDraft).toHaveBeenCalledWith({ title: "", description: "" });
   });
+
+  // "Duplicate issue" (and any future action that wants the create modal to
+  // land in a particular state) hands a `data` payload to the modal. The
+  // manual panel must pre-fill title, description, status, priority, and the
+  // date fields from `data` so the user only edits what they want to change.
+  it("pre-fills the manual panel from the data payload (duplicate issue flow)", async () => {
+    const onClose = vi.fn();
+
+    renderModal(
+      <CreateIssueModal
+        onClose={onClose}
+        data={{
+          title: "Original title",
+          description: "Original description",
+          status: "in_progress",
+          priority: "high",
+          assignee_type: "agent",
+          assignee_id: "agent-1",
+          start_date: "2026-02-01",
+          due_date: "2026-02-15",
+        }}
+      />,
+    );
+
+    expect(screen.getByPlaceholderText("Issue title")).toHaveValue("Original title");
+    expect(screen.getByPlaceholderText("Add description...")).toHaveValue("Original description");
+  });
 });

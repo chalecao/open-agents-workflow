@@ -24,6 +24,7 @@ export interface UseIssueActionsResult {
   openCreateSubIssue: () => void;
   openSetParent: () => void;
   openAddChild: () => void;
+  openDuplicate: () => void;
   openDeleteConfirm: (opts?: { onDeletedNavigateTo?: string }) => void;
 }
 
@@ -128,6 +129,34 @@ export function useIssueActions(issue: Issue | null): UseIssueActionsResult {
     openModal("issue-add-child", { issueId });
   }, [openModal, issueId]);
 
+  // Opens the create-issue modal pre-seeded with this issue's content so the
+  // user can tweak the title and submit a duplicate. The new issue starts
+  // fresh (no `parent_issue_id`) — duplicating preserves the content, not the
+  // sub-issue relationship, which would create a confusing parent/child
+  // graph when the user already has a "Set parent" action.
+  const openDuplicate = useCallback(() => {
+    if (!issue) return;
+    openModal("create-issue", {
+      // Snake-case to match the shape the create-issue panel already reads
+      // for `data.*`; consistency with how `openCreateSubIssue` payloads are
+      // assembled just above.
+      title: issue.title,
+      description: issue.description,
+      status: issue.status,
+      priority: issue.priority,
+      assignee_type: issue.assignee_type,
+      assignee_id: issue.assignee_id,
+      start_date: issue.start_date,
+      due_date: issue.due_date,
+      project_id: issue.project_id,
+      // Copy `handoff_data` only when non-empty — `{}` would round-trip as
+      // "explicit empty" and clutters the dialog with a blank payload editor.
+      ...(issue.handoff_data && Object.keys(issue.handoff_data).length > 0
+        ? { handoff_data: issue.handoff_data }
+        : {}),
+    });
+  }, [openModal, issue]);
+
   const openDeleteConfirm = useCallback(
     (opts?: { onDeletedNavigateTo?: string }) => {
       if (!issueId) return;
@@ -148,6 +177,7 @@ export function useIssueActions(issue: Issue | null): UseIssueActionsResult {
     openCreateSubIssue,
     openSetParent,
     openAddChild,
+    openDuplicate,
     openDeleteConfirm,
   };
 }

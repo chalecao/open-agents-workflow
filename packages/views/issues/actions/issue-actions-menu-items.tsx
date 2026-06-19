@@ -8,6 +8,7 @@ import {
   ArrowUp,
   Calendar,
   CalendarClock,
+  Copy,
   FolderOpen,
   Link2,
   MoreHorizontal,
@@ -105,6 +106,7 @@ export function IssueActionsMenuItems({
     openCreateSubIssue,
     openSetParent,
     openAddChild,
+    openDuplicate,
     openDeleteConfirm,
   } = actions;
 
@@ -260,6 +262,10 @@ export function IssueActionsMenuItems({
       <P.Item onClick={copyLink}>
         <Link2 className="h-3.5 w-3.5" />
         {t(($) => $.actions.copy_link)}
+      </P.Item>
+      <P.Item onClick={openDuplicate}>
+        <Copy className="h-3.5 w-3.5" />
+        {t(($) => $.actions.duplicate_issue)}
       </P.Item>
       <P.Item onClick={handleCopyWorkdirPath}>
         <FolderOpen className="h-3.5 w-3.5" />

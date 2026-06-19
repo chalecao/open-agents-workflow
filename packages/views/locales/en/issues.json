@@ -443,6 +443,7 @@
     "unpin_from_sidebar": "Unpin from sidebar",
     "copy_link": "Copy link",
     "copy_workdir_path": "Copy local workdir path",
+    "duplicate_issue": "Duplicate issue",
     "more": "More",
     "create_sub_issue": "Create sub-issue",
     "set_parent_issue": "Set parent issue...",

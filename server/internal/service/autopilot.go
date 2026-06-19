@@ -556,10 +556,10 @@ func (s *AutopilotService) dispatchOneHandoff(ctx context.Context, ap db.Autopil
 
 	// Record a run row up front. A handoff run is conceptually a
 	// run_only autopilot — there is no issue to create, the work is
-	// "post the @-mention comment and enqueue a task for the target
-	// agent". The run is what the failure monitor watches: if Enqueue
-	// fails or the comment insert fails, the run ends up in `failed`
-	// with a reason.
+	// "stamp the @-mention on the source comment and enqueue a task
+	// for the target agent". The run is what the failure monitor
+	// watches: if the comment update fails or the enqueue fails, the
+	// run ends up in `failed` with a reason.
 	run, err := s.Queries.CreateAutopilotRun(ctx, db.CreateAutopilotRunParams{
 		AutopilotID:    ap.ID,
 		TriggerID:      pgtype.UUID{}, // handoff has no autopilot_trigger row
@@ -583,15 +583,18 @@ func (s *AutopilotService) dispatchOneHandoff(ctx context.Context, ap db.Autopil
 	}
 	body := InterpolateHandoffCommentTemplate(template, eval.IssueHandoffData, p.TriggerDate)
 
-	// Mention link for the target agent. We render the body manually
-	// (instead of going through CreateComment) so the new comment is
-	// posted as the autopilot (system actor with the handoff run as
-	// trigger) and skips the human-only on_comment triggers.
-	mentionContent, err := s.postHandoffComment(ctx, ap, p.Issue, run, body)
+	// Handoff posts no separate comment: instead we extend the source
+	// agent's existing comment with the @-mention of the target agent
+	// (and the configured comment template body). The handoff reads as
+	// a continuation of the source's own work rather than as a new
+	// comment authored by a different actor, which keeps the issue
+	// timeline tighter and avoids the source-vs-target author swap that
+	// previously surfaced in the activity feed.
+	updatedSourceComment, err := s.appendHandoffMentionToSourceComment(ctx, ap, p.Issue, run, p.Comment, body)
 	if err != nil {
-		s.failRun(ctx, run.ID, "post handoff comment: "+err.Error())
-		s.captureAutopilotRunFailed(ap, run, "handoff", "post handoff comment: "+err.Error())
-		return fmt.Errorf("post handoff comment: %w", err)
+		s.failRun(ctx, run.ID, "append handoff mention: "+err.Error())
+		s.captureAutopilotRunFailed(ap, run, "handoff", "append handoff mention: "+err.Error())
+		return fmt.Errorf("append handoff mention: %w", err)
 	}
 
 	// Enqueue a task for the target agent using the existing mention
@@ -609,7 +612,11 @@ func (s *AutopilotService) dispatchOneHandoff(ctx context.Context, ap db.Autopil
 	// reverts to the standard per-(agent, issue) workdir reuse or a fresh
 	// worktree on first run.
 	inheritWorkDir := s.lookupHandoffSourceWorkDir(ctx, p)
-	if _, err := s.TaskSvc.EnqueueTaskForHandoffMention(ctx, p.Issue, ap.HandoffTargetAgentID, mentionContent.ID, inheritWorkDir); err != nil {
+	// trigger comment = the (now-extended) source comment. The target
+	// agent's prompt will see the source's original body followed by the
+	// handoff suffix, so it has the full context of what was just
+	// finished before being asked to continue.
+	if _, err := s.TaskSvc.EnqueueTaskForHandoffMention(ctx, p.Issue, ap.HandoffTargetAgentID, updatedSourceComment.ID, inheritWorkDir); err != nil {
 		s.failRun(ctx, run.ID, "enqueue target agent: "+err.Error())
 		s.captureAutopilotRunFailed(ap, run, "handoff", "enqueue target agent: "+err.Error())
 		return fmt.Errorf("enqueue target agent: %w", err)
@@ -705,55 +712,119 @@ func (s *AutopilotService) lookupHandoffSourceWorkDir(ctx context.Context, p Han
 	return prior.WorkDir.String
 }
 
-// postHandoffComment inserts the system-authored @-mention comment and
-// publishes the comment:created event. Returns the inserted row so the
-// caller can pass the new comment id to EnqueueTaskForMention as the
-// trigger.
+// appendHandoffMentionToSourceComment extends the source agent's existing
+// comment with the @-mention of the target agent (and the configured
+// comment template body) and publishes a comment:updated event so the UI
+// re-renders the source comment. Returns the updated source comment row
+// so the caller can pass it as the trigger comment for
+// EnqueueTaskForHandoffMention.
 //
-// The author of the comment is the autopilot itself (AuthorType="agent",
-// AuthorID=handoff_target_agent_id) so the comment reads as "posted by
-// the autopilot on behalf of the source agent" in the activity feed
-// without claiming a human identity.
+// Behaviour notes:
 //
-// Body is built by prefixing the @-mention link to the user-configured
-// template. We don't use util.ParseMentions on the body — the @-mention
-// link is the single token the rest of the system needs to fire the
-// agent's task; wrapping it in markdown link syntax is what
-// enqueueMentionedAgentTasks already looks for.
-func (s *AutopilotService) postHandoffComment(ctx context.Context, ap db.Autopilot, issue db.Issue, run db.AutopilotRun, body string) (db.Comment, error) {
+//   - Handoff posts NO separate comment. The handoff is supposed to read
+//     as a continuation of the source's own work, not as a new top-level
+//     comment authored by the target agent. Stamping the @-mention onto
+//     the source comment keeps the issue timeline compact and avoids a
+//     "ghost author" comment that misrepresents who actually said what.
+//
+//   - The @-mention is rendered as a markdown link of the form
+//     [@targetName](mention://agent/<uuid>) — the same shape
+//     enqueueMentionedAgentTasks parses out of comment content to fire
+//     the @-mention pipeline. The target agent's task therefore gets
+//     the @-mention token it needs without the handoff having to
+//     re-implement mention parsing.
+//
+//   - Idempotency at the autopilot level: if the source comment already
+//     carries the same target-agent mention link (e.g. a retry of the
+//     same handoff autopilot, or a re-evaluation after a partial
+//     failure), this function returns the unchanged source comment
+//     without performing a write. The mention link is keyed by the
+//     target agent's UUID, so a handoff to agent B is still appended
+//     even if a handoff to agent A has already stamped agent A's link.
+//     Multi-handoff races on the same (source, target) pair are
+//     bounded by the (issue_id, agent_id) unique index on pending
+//     agent_task_queue rows — the first enqueue wins, duplicates are
+//     rejected at INSERT time.
+//
+//   - The author identity of the comment does not change: the source
+//     agent's name still appears on the comment in the activity feed.
+//     The event is published with ActorType="system" because the
+//     autopilot (not the source agent itself) is the actor performing
+//     the update; the source agent's task is typically already
+//     finishing/finished by the time the handoff fires.
+func (s *AutopilotService) appendHandoffMentionToSourceComment(
+	ctx context.Context,
+	ap db.Autopilot,
+	issue db.Issue,
+	run db.AutopilotRun,
+	sourceComment db.Comment,
+	body string,
+) (db.Comment, error) {
+	if !sourceComment.ID.Valid {
+		return db.Comment{}, fmt.Errorf("source comment has no id")
+	}
 	targetAgent, err := s.Queries.GetAgent(ctx, ap.HandoffTargetAgentID)
 	if err != nil {
 		return db.Comment{}, fmt.Errorf("load target agent: %w", err)
 	}
 	mention := fmt.Sprintf("[@%s](mention://agent/%s) ", targetAgent.Name, util.UUIDToString(ap.HandoffTargetAgentID))
-	content := mention + body
+	suffix := mention
+	if body != "" {
+		suffix = mention + body
+	}
 
-	comment, err := s.Queries.CreateComment(ctx, db.CreateCommentParams{
-		IssueID:     issue.ID,
-		WorkspaceID: issue.WorkspaceID,
-		AuthorType:  "agent",
-		AuthorID:    ap.HandoffTargetAgentID,
-		Content:     content,
-		Type:        "comment",
-		ParentID:    pgtype.UUID{},
+	// Idempotency guard — see the function-level doc.
+	if strings.Contains(sourceComment.Content, mention) {
+		return sourceComment, nil
+	}
+
+	// Compose the new content. Use a paragraph break (Markdown
+	// convention) so the appended suffix renders as its own block under
+	// the source's prose, and skip the separator when the source
+	// comment is empty so the first handoff still produces a clean
+	// mention line.
+	var newContent string
+	switch {
+	case sourceComment.Content == "":
+		newContent = suffix
+	case body == "":
+		// No template body — just the mention, separated by a
+		// paragraph break so the agent link starts on its own line.
+		newContent = sourceComment.Content + "\n\n" + mention
+	default:
+		newContent = sourceComment.Content + "\n\n" + suffix
+	}
+
+	updated, err := s.Queries.UpdateComment(ctx, db.UpdateCommentParams{
+		ID:      sourceComment.ID,
+		Content: newContent,
 	})
 	if err != nil {
-		return db.Comment{}, fmt.Errorf("create comment: %w", err)
+		return db.Comment{}, fmt.Errorf("update source comment: %w", err)
 	}
+
 	s.Bus.Publish(events.Event{
-		Type:        protocol.EventCommentCreated,
+		Type:        protocol.EventCommentUpdated,
 		WorkspaceID: util.UUIDToString(issue.WorkspaceID),
-		ActorType:   "agent",
+		ActorType:   "system",
 		ActorID:     util.UUIDToString(ap.HandoffTargetAgentID),
 		Payload: map[string]any{
-			"comment":             comment,
+			"comment":             updated,
 			"issue_title":         issue.Title,
 			"issue_assignee_type": nil,
 			"issue_assignee_id":   nil,
 			"issue_status":        issue.Status,
 		},
 	})
-	return comment, nil
+	slog.Info("handoff: appended @-mention to source comment",
+		"autopilot_id", util.UUIDToString(ap.ID),
+		"run_id", util.UUIDToString(run.ID),
+		"issue_id", util.UUIDToString(issue.ID),
+		"source_comment_id", util.UUIDToString(sourceComment.ID),
+		"target_agent_id", util.UUIDToString(ap.HandoffTargetAgentID),
+		"appended_body", body != "",
+	)
+	return updated, nil
 }
 
 // parseHandoffDataMap is a defensive shim around json.Unmarshal that

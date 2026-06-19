@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigation } from "../navigation";
 import {
@@ -101,14 +101,27 @@ export function ManualCreatePanel({
   const keepOpen = useQuickCreateStore((s) => s.keepOpen);
   const setKeepOpen = useQuickCreateStore((s) => s.setKeepOpen);
 
-  const [title, setTitle] = useState(draft.title);
+  const [title, setTitle] = useState((data?.title as string | undefined) ?? draft.title);
   const [formResetKey, setFormResetKey] = useState(0);
   const descEditorRef = useRef<ContentEditorRef>(null);
+  // Pre-fill the editor from the modal's data payload when callers (e.g. the
+  // "Duplicate issue" action) hand in a source description. The editor reads
+  // `defaultValue` only at mount, so any late-arriving data here would need
+  // an effect to sync — duplicates open the dialog fresh, so mount-time is
+  // enough.
+  const initialDescription = useMemo(
+    () => (data?.description as string | null | undefined) ?? draft.description,
+    // data identity is stable for the lifetime of the dialog (it comes from
+    // the modal store), so a dep array keyed on data is sufficient; draft
+    // description participates to preserve the previous (data-free) behavior.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
   const { isDragOver: descDragOver, dropZoneProps: descDropZoneProps } = useFileDropZone({
     onDrop: (files) => files.forEach((f) => descEditorRef.current?.uploadFile(f)),
   });
   const [status, setStatus] = useState<IssueStatus>((data?.status as IssueStatus) || draft.status);
-  const [priority, setPriority] = useState<IssuePriority>(draft.priority);
+  const [priority, setPriority] = useState<IssuePriority>((data?.priority as IssuePriority | undefined) ?? draft.priority);
   const [submitting, setSubmitting] = useState(false);
   const [assigneeType, setAssigneeType] = useState<IssueAssigneeType | undefined>(() => {
     if (data && "assignee_type" in data) {
@@ -122,8 +135,12 @@ export function ManualCreatePanel({
     }
     return draft.assigneeId;
   });
-  const [startDate, setStartDate] = useState<string | null>(draft.startDate);
-  const [dueDate, setDueDate] = useState<string | null>(draft.dueDate);
+  const [startDate, setStartDate] = useState<string | null>(
+    (data?.start_date as string | null | undefined) ?? draft.startDate,
+  );
+  const [dueDate, setDueDate] = useState<string | null>(
+    (data?.due_date as string | null | undefined) ?? draft.dueDate,
+  );
   const [projectId, setProjectId] = useState<string | undefined>(
     (data?.project_id as string) || undefined,
   );
@@ -136,7 +153,13 @@ export function ManualCreatePanel({
   // for JSON editing; closing it commits (or discards) the value. The
   // field stores an IssueHandoffData (Record<string, unknown>) and the
   // `{}` default is what the server treats as "no payload".
-  const [handoffData, setHandoffData] = useState<IssueHandoffData | null>(null);
+  const [handoffData, setHandoffData] = useState<IssueHandoffData | null>(() => {
+    const fromData = data?.handoff_data as IssueHandoffData | null | undefined;
+    if (fromData && typeof fromData === "object" && Object.keys(fromData).length > 0) {
+      return fromData;
+    }
+    return null;
+  });
   const [handoffDataDialogOpen, setHandoffDataDialogOpen] = useState(false);
   // Start date is a low-frequency field — by default it lives in the
   // overflow ⋯ menu. Clicking the menu item flips this open, which both
@@ -482,7 +505,7 @@ export function ManualCreatePanel({
               <TitleEditor
                 key={formResetKey}
                 autoFocus
-                defaultValue={draft.title}
+                defaultValue={title}
                 placeholder={t(($) => $.create_issue.title_placeholder)}
                 className="text-lg font-semibold"
                 onChange={(v) => updateTitle(v)}
@@ -494,7 +517,7 @@ export function ManualCreatePanel({
             <div {...descDropZoneProps} className="relative flex flex-1 min-h-0 overflow-y-auto px-5">
               <ContentEditor
                 ref={descEditorRef}
-                defaultValue={draft.description}
+                defaultValue={initialDescription}
                 placeholder={t(($) => $.create_issue.description_placeholder)}
                 onUpdate={(md) => setDraft({ description: md })}
                 onUploadFile={handleUpload}

@@ -93,6 +93,8 @@ const mockIssue: Issue = {
   start_date: null,
   due_date: null,
   project_id: null,
+  metadata: {},
+  handoff_data: {},
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
 } as Issue;
@@ -209,6 +211,51 @@ describe("useIssueActions", () => {
     });
   });
 
+  it("openDuplicate seeds the create-issue modal with the source issue's content", () => {
+    const richIssue: Issue = {
+      ...mockIssue,
+      title: "Original",
+      description: "Original description",
+      status: "in_progress",
+      priority: "high",
+      assignee_type: "agent",
+      assignee_id: "agent-1",
+      start_date: "2026-02-01",
+      due_date: "2026-02-15",
+      project_id: "project-1",
+      handoff_data: { branch: "main" },
+    } as Issue;
+    const { result } = renderHook(() => useIssueActions(richIssue), { wrapper });
+
+    act(() => {
+      result.current.openDuplicate();
+    });
+
+    expect(mockOpenModal).toHaveBeenLastCalledWith("create-issue", {
+      title: "Original",
+      description: "Original description",
+      status: "in_progress",
+      priority: "high",
+      assignee_type: "agent",
+      assignee_id: "agent-1",
+      start_date: "2026-02-01",
+      due_date: "2026-02-15",
+      project_id: "project-1",
+      handoff_data: { branch: "main" },
+    });
+  });
+
+  it("openDuplicate omits handoff_data when the source issue has an empty payload", () => {
+    const { result } = renderHook(() => useIssueActions(mockIssue), { wrapper });
+
+    act(() => {
+      result.current.openDuplicate();
+    });
+
+    const payload = mockOpenModal.mock.calls.at(-1)?.[1] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty("handoff_data");
+  });
+
   it("togglePin calls createPin when not pinned and deletePin when pinned", async () => {
     pinListRef.value = [];
     const { result: r1 } = renderHook(() => useIssueActions(mockIssue), { wrapper });
@@ -248,6 +295,7 @@ describe("useIssueActions", () => {
       result.current.updateField({ status: "done" });
       result.current.togglePin();
       result.current.openSetParent();
+      result.current.openDuplicate();
     });
 
     expect(mockUpdateMutate).not.toHaveBeenCalled();
