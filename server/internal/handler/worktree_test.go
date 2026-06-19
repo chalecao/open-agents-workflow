@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -33,6 +34,7 @@ func TestWorktreeRoutesRegistered(t *testing.T) {
 		{"list", "/api/issues/" + issueID + "/worktrees"},
 		{"diff", "/api/issues/" + issueID + "/worktrees/" + encoded + "/diff"},
 		{"file", "/api/issues/" + issueID + "/worktrees/" + encoded + "/file?path=README.md"},
+		{"tree", "/api/issues/" + issueID + "/worktrees/" + encoded + "/tree"},
 	}
 
 	for _, tc := range cases {
@@ -154,5 +156,146 @@ func TestReadWorktreeDiffUnbornHEAD(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("expected hello.txt in Untracked, got %+v", resp.Untracked)
+	}
+}
+
+// Verify readWorktreeTree returns every tracked file, every untracked
+// file that .gitignore does not exclude, and stamps uncommitted files
+// with the right status code. The .gitignore filter is the whole point —
+// the sidebar would otherwise dump node_modules / build artifacts into
+// the response and the user would never find their actual source.
+func TestReadWorktreeTreeRespectsGitignore(t *testing.T) {
+	dir := t.TempDir()
+	for _, args := range [][]string{
+		{"init"},
+		{"config", "user.email", "test@example.com"},
+		{"config", "user.name", "test"},
+	} {
+		if out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("git %s: %s: %v", strings.Join(args, " "), out, err)
+		}
+	}
+
+	// .gitignore excludes the entire `ignored/` tree; this is the
+	// assertion under test.
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("ignored/\n"), 0o644); err != nil {
+		t.Fatalf("write .gitignore: %v", err)
+	}
+	// Tracked file (clean) — must show up with empty status.
+	if err := os.WriteFile(filepath.Join(dir, "tracked.txt"), []byte("ok\n"), 0o644); err != nil {
+		t.Fatalf("write tracked: %v", err)
+	}
+	if out, err := exec.Command("git", "-C", dir, "add", "tracked.txt", ".gitignore").CombinedOutput(); err != nil {
+		t.Fatalf("git add: %s: %v", out, err)
+	}
+	if out, err := exec.Command("git", "-C", dir, "commit", "-m", "init").CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %s: %v", out, err)
+	}
+	// Tracked file with uncommitted edits — status " M".
+	if err := os.WriteFile(filepath.Join(dir, "tracked.txt"), []byte("changed\n"), 0o644); err != nil {
+		t.Fatalf("write tracked: %v", err)
+	}
+	// Untracked file (visible to git) — status "??".
+	if err := os.WriteFile(filepath.Join(dir, "draft.md"), []byte("hi\n"), 0o644); err != nil {
+		t.Fatalf("write draft: %v", err)
+	}
+	// Ignored untracked file — must NOT show up.
+	if err := os.MkdirAll(filepath.Join(dir, "ignored"), 0o755); err != nil {
+		t.Fatalf("mkdir ignored: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "ignored", "noise.txt"), []byte("noise\n"), 0o644); err != nil {
+		t.Fatalf("write ignored: %v", err)
+	}
+
+	resp, err := readWorktreeTree(dir)
+	if err != nil {
+		t.Fatalf("readWorktreeTree: %v", err)
+	}
+	if !resp.Exists {
+		t.Fatalf("expected Exists=true, got %+v", resp)
+	}
+	// Indexed-by-path for easy lookup.
+	got := make(map[string]WorktreeTreeFile, len(resp.Files))
+	for _, f := range resp.Files {
+		got[f.Path] = f
+	}
+	// .gitignore should be tracked too — sanity check that ls-files
+	// actually saw the file, otherwise the .gitignore assertions below
+	// are vacuous.
+	if _, ok := got[".gitignore"]; !ok {
+		t.Fatalf("expected .gitignore in tree, got %+v", resp.Files)
+	}
+	track, ok := got["tracked.txt"]
+	if !ok {
+		t.Fatalf("expected tracked.txt in tree, got %+v", resp.Files)
+	}
+	if !track.Tracked {
+		t.Fatalf("expected tracked.txt Tracked=true, got %+v", track)
+	}
+	// " M" — the leading " " is a clean index, the "M" is a worktree
+	// edit. Don't pin the exact code beyond that; porcelain adds
+	// columns for things like intent-to-add over time.
+	if track.Status == "" || track.Status[1] != 'M' {
+		t.Fatalf("expected tracked.txt worktree-status to be M, got %q", track.Status)
+	}
+	if track.Additions == 0 && track.Deletions == 0 {
+		t.Fatalf("expected non-zero numstat for tracked.txt, got %+v", track)
+	}
+	draft, ok := got["draft.md"]
+	if !ok {
+		t.Fatalf("expected draft.md in tree, got %+v", resp.Files)
+	}
+	if draft.Tracked {
+		t.Fatalf("expected draft.md Tracked=false, got %+v", draft)
+	}
+	if draft.Status != "??" {
+		t.Fatalf("expected draft.md status '??', got %q", draft.Status)
+	}
+	if _, ok := got["ignored/noise.txt"]; ok {
+		t.Fatalf("expected ignored/noise.txt to be excluded, got %+v", resp.Files)
+	}
+	if resp.Truncated {
+		t.Fatalf("did not expect truncation on a small fixture, got Truncated=true")
+	}
+	if resp.TotalCount != len(resp.Files) {
+		t.Fatalf("TotalCount (%d) should equal len(Files) (%d) for a non-truncated response", resp.TotalCount, len(resp.Files))
+	}
+}
+
+// Verify readWorktreeTree auto-initializes git when the path exists but
+// is not a git repository. Regression for the case where a worktree path
+// was recorded in the DB but the user deleted .git or the directory was
+// never initialized as a git repo. The handler should run `git init` and
+// return the untracked files.
+func TestReadWorktreeTreeNonGitDirectoryAutoInit(t *testing.T) {
+	dir := t.TempDir()
+	// Do NOT run `git init` — this is a plain directory with no .git.
+	if err := os.WriteFile(filepath.Join(dir, "plain.txt"), []byte("hi\n"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	resp, err := readWorktreeTree(dir)
+	if err != nil {
+		t.Fatalf("readWorktreeTree: %v", err)
+	}
+	if !resp.Exists {
+		t.Fatalf("expected Exists=true, got %+v", resp)
+	}
+	// After auto-init, the file should show up as untracked.
+	if len(resp.Files) != 1 {
+		t.Fatalf("expected 1 file after auto-init, got %+v", resp.Files)
+	}
+	if resp.Files[0].Path != "plain.txt" {
+		t.Fatalf("expected plain.txt, got %q", resp.Files[0].Path)
+	}
+	if resp.Files[0].Status != "??" {
+		t.Fatalf("expected status '??' for untracked file, got %q", resp.Files[0].Status)
+	}
+	if resp.Files[0].Tracked {
+		t.Fatalf("expected Tracked=false for untracked file, got %+v", resp.Files[0])
+	}
+	// Verify .git was actually created.
+	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
+		t.Fatalf("expected .git to exist after auto-init: %v", err)
 	}
 }

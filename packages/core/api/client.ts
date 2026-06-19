@@ -198,9 +198,11 @@ import {
   WorktreesListResponseSchema,
   WorktreeDiffResponseSchema,
   WorktreeFileResponseSchema,
+  WorktreeTreeResponseSchema,
   type WorktreeListItem,
   type WorktreeDiffResponse,
   type WorktreeFileResponse,
+  type WorktreeTreeResponse,
 } from "./schemas";
 
 /** Identifies the calling client to the server.
@@ -732,6 +734,33 @@ export class ApiClient {
         head_sha: "",
       },
       { endpoint: "GET /api/issues/:id/worktrees/:id/file" },
+    );
+  }
+
+  // Full file tree for a worktree — every tracked + non-gitignored
+  // untracked file, capped at 5 000 entries server-side. The sidebar
+  // shows this instead of the diff-only view so the user can browse
+  // the whole worktree. Truncated + total_count feed the "Showing N of
+  // M" hint when the cap is hit.
+  async listIssueWorktreeTree(
+    issueId: string,
+    worktreeId: string,
+  ): Promise<WorktreeTreeResponse> {
+    const encoded = encodeURIComponent(worktreeId);
+    const raw = await this.fetch<unknown>(
+      `/api/issues/${issueId}/worktrees/${encoded}/tree`,
+    );
+    return parseWithFallback(
+      raw,
+      WorktreeTreeResponseSchema,
+      {
+        id: worktreeId,
+        exists: true,
+        files: [],
+        truncated: false,
+        total_count: 0,
+      },
+      { endpoint: "GET /api/issues/:id/worktrees/:id/tree" },
     );
   }
 

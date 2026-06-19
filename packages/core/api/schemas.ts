@@ -267,6 +267,30 @@ export const WorktreeFileResponseSchema = z.object({
 });
 export type WorktreeFileResponse = z.infer<typeof WorktreeFileResponseSchema>;
 
+// Full worktree file tree — every tracked + untracked (non-gitignored)
+// file in the worktree, capped at 5 000 entries server-side. The sidebar
+// uses this instead of the diff-only view so the user can browse the
+// whole worktree, not just the changed files. `status` mirrors
+// `git status --porcelain`; clean tracked files use "".
+export const WorktreeTreeFileSchema = z.object({
+  path: z.string(),
+  status: z.string().default(""),
+  additions: z.number().int().default(0),
+  deletions: z.number().int().default(0),
+  binary: z.boolean().default(false),
+  tracked: z.boolean().default(true),
+});
+export type WorktreeTreeFile = z.infer<typeof WorktreeTreeFileSchema>;
+
+export const WorktreeTreeResponseSchema = z.object({
+  id: z.string(),
+  exists: z.boolean().default(true),
+  files: z.array(WorktreeTreeFileSchema).default([]),
+  truncated: z.boolean().default(false),
+  total_count: z.number().int().default(0),
+});
+export type WorktreeTreeResponse = z.infer<typeof WorktreeTreeResponseSchema>;
+
 // Metadata is primitive-only by API/DB contract. Stay lenient on shape:
 // unknown keys land as `unknown` to a caller, but the field itself defaults
 // to {} so consumers never need to nil-guard `issue.metadata`.

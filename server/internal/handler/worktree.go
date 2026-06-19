@@ -139,6 +139,48 @@ type WorktreeFileResponse struct {
 	HeadSHA string `json:"head_sha"`
 }
 
+// WorktreeTreeFile is one entry in the per-worktree file tree. The
+// sidebar replaces the diff-only view with a full directory listing so the
+// user can browse any file in the worktree, not just the ones that
+// changed. Status mirrors `git status --porcelain` codes when the file
+// has uncommitted work; clean tracked files use an empty string. Untracked
+// files use "??". Additions / Deletions are populated from `git diff
+// --numstat` for files with uncommitted changes and stay zero for clean
+// files (no diff to count).
+type WorktreeTreeFile struct {
+	Path      string `json:"path"`
+	Status    string `json:"status"`
+	Additions int    `json:"additions"`
+	Deletions int    `json:"deletions"`
+	Binary    bool   `json:"binary"`
+	// Tracked distinguishes "in git's index" from "untracked but on
+	// disk". The sidebar uses this to decide whether clicking a clean
+	// file should still be allowed (yes — both kinds are clickable).
+	Tracked bool `json:"tracked"`
+}
+
+// WorktreeTreeResponse is the JSON shape returned by
+// GET /api/issues/:id/worktrees/:worktreeId/tree. Files are flat (one
+// row per file); the client groups them by directory for the nested tree
+// view. Truncated is true when the file count hit WorktreeTreeMaxFiles
+// before reaching the end of the listing; TotalCount is the full count
+// we saw so the UI can render "Showing N of M".
+type WorktreeTreeResponse struct {
+	ID         string             `json:"id"`
+	Exists     bool               `json:"exists"`
+	Files      []WorktreeTreeFile `json:"files"`
+	Truncated  bool               `json:"truncated"`
+	TotalCount int                `json:"total_count"`
+}
+
+// WorktreeTreeMaxFiles caps the file tree response so a worktree sitting
+// on top of a vendored dependency tree (e.g. an LLM cache that committed
+// millions of JSONL shards) cannot pin the sidebar request indefinitely.
+// 5 000 comfortably covers a typical monorepo (the whole `node_modules`
+// of a large frontend is hidden behind .gitignore, so this almost never
+// trips) and the client renders a "Showing N of M" hint when we truncate.
+const WorktreeTreeMaxFiles = 5000
+
 // ListIssueWorktrees returns the per-worktree summary list for the issue
 // sidebar. DB-only — does not touch the filesystem — so the request stays
 // cheap even on issues with many worktrees. Branch / base_branch are
@@ -298,6 +340,43 @@ func (h *Handler) GetIssueWorktreeFile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// ListIssueWorktreeTree returns the full file tree for a worktree — every
+// tracked file plus every untracked file that is not excluded by
+// .gitignore — capped at WorktreeTreeMaxFiles. The sidebar uses this to
+// render a directory tree so the user can browse any file in the worktree,
+// not just the ones that changed. Each row carries a git status code (M /
+// A / D / R / ?? / "") so the UI can decorate changed files with the
+// familiar "added / modified / deleted" badge without re-running git
+// status on the client.
+func (h *Handler) ListIssueWorktreeTree(w http.ResponseWriter, r *http.Request) {
+	issueID := chi.URLParam(r, "id")
+	issue, ok := h.loadIssueForUser(w, r, issueID)
+	if !ok {
+		return
+	}
+	worktreeID, ok := parseWorktreeID(w, r)
+	if !ok {
+		return
+	}
+	if !h.worktreeBelongsToIssue(r.Context(), issue.ID, worktreeID) {
+		writeError(w, http.StatusNotFound, "worktree not found on this issue")
+		return
+	}
+
+	resp, err := readWorktreeTree(worktreeID)
+	if err != nil {
+		if errors.Is(err, errWorktreeMissing) {
+			writeError(w, http.StatusGone, "worktree has been cleaned up")
+			return
+		}
+		slog.Warn("worktree tree failed", append(logger.RequestAttrs(r),
+			"worktree_id", worktreeID, "issue_id", issueID, "error", err)...)
+		writeError(w, http.StatusBadGateway, "failed to read worktree tree")
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
 // ── helpers ─────────────────────────────────────────────────────────────────
 
 // parseWorktreeID pulls the {worktreeId} URL segment and round-trips it
@@ -448,6 +527,165 @@ func readWorktreeDiff(worktreeID string) (*WorktreeDiffResponse, error) {
 		resp.UnstagedFiles = parseNumstat(unstagedNumstat)
 	}
 
+	return resp, nil
+}
+
+// readWorktreeTree returns every file in the worktree that the user could
+// plausibly want to inspect: tracked files from `git ls-files` and
+// untracked files from `git ls-files --others --exclude-standard`. The
+// `--exclude-standard` flag applies .gitignore (plus the per-user and
+// per-repo exclude lists git maintains), so vendored or generated
+// artifacts like node_modules/ never leak into the response. Untracked
+// paths are merged in with status "??".
+//
+// The list is truncated at WorktreeTreeMaxFiles to keep the sidebar
+// responsive on worktrees that back huge vendored trees. We keep going
+// just long enough to count the rest so the UI can render "Showing N of
+// M" instead of a silent cut-off.
+func readWorktreeTree(worktreeID string) (*WorktreeTreeResponse, error) {
+	if _, err := os.Stat(worktreeID); err != nil {
+		if os.IsNotExist(err) {
+			return nil, errWorktreeMissing
+		}
+		return nil, fmt.Errorf("stat worktree: %w", err)
+	}
+
+	resp := &WorktreeTreeResponse{ID: worktreeID, Exists: true}
+
+	// Tracked files first — `git ls-files` walks the index, so the result
+	// is independent of the working tree and matches what the worktree
+	// itself would check out.
+	trackedOut, err := gitOutput(worktreeID, "ls-files")
+	if err != nil {
+		// Path exists but is not a git repository. Auto-initialize
+		// so the sidebar can still show files. This handles cases
+		// where the user deleted .git or the worktree was never
+		// initialized.
+		if strings.Contains(err.Error(), "not a git repository") {
+			if out, initErr := exec.Command("git", "-C", worktreeID, "init").CombinedOutput(); initErr != nil {
+				slog.Warn("auto git init failed", "worktree_id", worktreeID, "error", initErr, "output", string(out))
+				// Fall back to empty tree if init fails.
+				return resp, nil
+			}
+			// Re-run ls-files after init. A fresh repo has no
+			// tracked files, so this returns empty — but untracked
+			// files will now surface via --others below.
+			trackedOut, err = gitOutput(worktreeID, "ls-files")
+			if err != nil {
+				return resp, nil
+			}
+		} else {
+			return nil, fmt.Errorf("git ls-files: %w", err)
+		}
+	}
+	tracked := splitLines(trackedOut)
+
+	// `git status --porcelain` is the cheapest way to know which tracked
+	// files also have uncommitted work. Without it every clean file
+	// would still render in the sidebar as "modified" once the user
+	// expanded the row, which is misleading. Path-keyed map for O(1)
+	// lookup; we strip the leading "XY " status column.
+	statusOut, err := gitOutput(worktreeID, "status", "--porcelain")
+	if err != nil {
+		return nil, fmt.Errorf("git status: %w", err)
+	}
+	statuses := make(map[string]string, len(tracked))
+	if statusOut != "" {
+		for _, line := range strings.Split(statusOut, "\n") {
+			line = strings.TrimRight(line, "\r")
+			if len(line) < 4 {
+				continue
+			}
+			// "XY path" — X = index status, Y = worktree status, space, path.
+			// For renames (R) and copies (C) the path is "from -> to"; we
+			// only need the target (the rest of the worktree API uses
+			// target paths too).
+			path := line[3:]
+			if idx := strings.Index(path, " -> "); idx >= 0 {
+				path = path[idx+4:]
+			}
+			statuses[path] = line[:2]
+		}
+	}
+
+	// Untracked files — `--exclude-standard` applies the standard
+	// .gitignore, .git/info/exclude, and core.excludesfile lists, so
+	// the response matches what `git status` would show.
+	untrackedOut, err := gitOutput(worktreeID, "ls-files", "--others", "--exclude-standard")
+	if err != nil {
+		return nil, fmt.Errorf("git ls-files --others: %w", err)
+	}
+	untracked := splitLines(untrackedOut)
+
+	// numstat gives +/- counts. Only meaningful for files with
+	// uncommitted changes; we only need to parse it for those rows.
+	numstatOut, _ := gitOutput(worktreeID, "diff", "--numstat")
+	numstats := make(map[string][2]int, len(tracked))
+	if numstatOut != "" {
+		for _, line := range strings.Split(numstatOut, "\n") {
+			fields := strings.SplitN(line, "\t", 3)
+			if len(fields) < 3 {
+				continue
+			}
+			add := parseIntOrZero(fields[0])
+			del := parseIntOrZero(fields[1])
+			path := fields[2]
+			// Renames: "old -> new" in the path column.
+			if idx := strings.Index(path, " -> "); idx >= 0 {
+				path = path[idx+4:]
+			}
+			numstats[path] = [2]int{add, del}
+		}
+	}
+
+	// Tracked first, then untracked. We keep both in one slice so the
+	// client can sort / group the flat list however it wants.
+	files := make([]WorktreeTreeFile, 0, len(tracked)+len(untracked))
+	for _, path := range tracked {
+		entry := WorktreeTreeFile{Path: path, Tracked: true, Status: statuses[path]}
+		if counts, ok := numstats[path]; ok {
+			entry.Additions = counts[0]
+			entry.Deletions = counts[1]
+		}
+		// Binary: `git diff --numstat` prints "-\t-\tpath" for binary
+		// changes. We only need to flag it when the file has uncommitted
+		// work — a clean tracked file is, by definition, not binary
+		// in the diff sense.
+		if entry.Status != "" {
+			if out, err := gitOutput(worktreeID, "diff", "--numstat", "--", path); err == nil {
+				if isBinaryNumstatLine(out) {
+					entry.Binary = true
+					entry.Additions = 0
+					entry.Deletions = 0
+				}
+			}
+		}
+		files = append(files, entry)
+		if len(files) >= WorktreeTreeMaxFiles {
+			resp.Files = files
+			resp.Truncated = true
+			resp.TotalCount = len(tracked) + len(untracked)
+			return resp, nil
+		}
+	}
+	for _, path := range untracked {
+		files = append(files, WorktreeTreeFile{
+			Path:   path,
+			Status: "??",
+			// Untracked files have no git-tracked size, so we don't
+			// bother computing additions / deletions — the user can
+			// stat the file via the dialog if they need to.
+		})
+		if len(files) >= WorktreeTreeMaxFiles {
+			resp.Files = files
+			resp.Truncated = true
+			resp.TotalCount = len(tracked) + len(untracked)
+			return resp, nil
+		}
+	}
+
+	resp.Files = files
+	resp.TotalCount = len(tracked) + len(untracked)
 	return resp, nil
 }
 

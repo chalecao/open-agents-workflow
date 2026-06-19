@@ -30,10 +30,10 @@ import { copyText } from "@multica/ui/lib/clipboard";
 import { cn } from "@multica/ui/lib/utils";
 import { api } from "@multica/core/api";
 import type {
-  WorktreeDiffResponse,
-  WorktreeFileChange,
   WorktreeFileResponse,
   WorktreeListItem,
+  WorktreeTreeFile,
+  WorktreeTreeResponse,
 } from "@multica/core/api/schemas";
 import { useT } from "../../i18n";
 import { ScrollArea } from "@multica/ui/components/ui/scroll-area";
@@ -47,11 +47,13 @@ import { ScrollArea } from "@multica/ui/components/ui/scroll-area";
 //
 //   1. list endpoint → list of worktree summary rows (DB only, no FS).
 //      Always cheap, no body shown until expanded.
-//   2. expand → lazy diff endpoint per worktree. While the diff is in
-//      flight the row shows a spinner; on error the row inlines the
+//   2. expand → lazy tree endpoint per worktree. While the file tree is
+//      in flight the row shows a spinner; on error the row inlines the
 //      failure message.
-//   3. expanded body groups changed files by directory; clicking a file
-//      opens a dialog with before/after content.
+//   3. expanded body is a true nested directory tree (every tracked +
+//      untracked non-gitignored file in the worktree). Changed files
+//      carry a status badge + +/- counts. Clicking a file opens the
+//      existing before/after content dialog.
 //
 // All requests are routed through the api client and cached by React
 // Query. Cross-link state (which worktree is currently selected from an
@@ -168,14 +170,15 @@ function WorktreeRow({
     path: string;
   } | null>(null);
 
-  // Diff is lazy — only fetched the first time the row is expanded, and
-  // cached in React Query so flipping expand/collapse is free. The
-  // endpoint hits `git diff` on the daemon host; expected to be < 1s
-  // for typical worktrees, but the spinner is left in place to keep
-  // the affordance honest on big refactors.
-  const diffQuery = useQuery({
-    queryKey: ["issues", "worktree-diff", issueId, worktree.id] as const,
-    queryFn: () => api.getIssueWorktreeDiff(issueId, worktree.id),
+  // File tree is lazy — only fetched the first time the row is expanded,
+  // and cached in React Query so flipping expand/collapse is free. The
+  // endpoint runs `git ls-files` + `git ls-files --others
+  // --exclude-standard` on the daemon host; expected to be < 1s for
+  // typical worktrees, but the spinner stays put to keep the affordance
+  // honest on huge monorepos.
+  const treeQuery = useQuery({
+    queryKey: ["issues", "worktree-tree", issueId, worktree.id] as const,
+    queryFn: () => api.listIssueWorktreeTree(issueId, worktree.id),
     enabled: expanded,
     staleTime: 60_000,
   });
@@ -193,6 +196,14 @@ function WorktreeRow({
         : t(($) => $.worktree_sidebar.branch_unknown);
 
   const shortId = useShortPath(worktree.id);
+  // `worktree.id` IS the absolute path. The row header truncates it so
+  // the row stays compact, but the full path must stay one hover away —
+  // the copy button already gives that affordance, but a Tooltip on the
+  // title text is a faster "what is this?" signal and means the user
+  // does not have to find and click the copy button just to see the
+  // path. Skip the Tooltip on short ids to avoid a noisy hover target
+  // for in-tree worktrees like `/tmp/wt-abc`.
+  const showFullPathTooltip = worktree.id.length > shortId.length;
   const taskCount = worktree.task_count;
   const commentCount = worktree.comment_count;
   const isGCd = !worktree.exists;
@@ -218,9 +229,24 @@ function WorktreeRow({
           <GitBranch className="h-3 w-3 shrink-0 text-muted-foreground" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="truncate text-xs font-medium">
-                {shortId}
-              </span>
+              {showFullPathTooltip ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <span className="truncate text-xs font-medium">
+                        {shortId}
+                      </span>
+                    }
+                  />
+                  <TooltipContent side="top" className="font-mono text-xs">
+                    {worktree.id}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <span className="truncate text-xs font-medium">
+                  {shortId}
+                </span>
+              )}
               {isGCd && (
                 <Tooltip>
                   <TooltipTrigger
@@ -278,21 +304,21 @@ function WorktreeRow({
 
       {expanded && (
         <div className="border-t border-border/40 px-1.5 py-1.5">
-          {diffQuery.isLoading && (
+          {treeQuery.isLoading && (
             <div className="flex items-center gap-1 text-[10px] text-muted-foreground px-1">
               <Loader2 className="h-3 w-3 animate-spin" />
-              {t(($) => $.worktree_sidebar.diff_load_failed)}
+              {t(($) => $.worktree_sidebar.tree_load_pending)}
             </div>
           )}
-          {diffQuery.error && (
+          {treeQuery.error && (
             <div className="flex items-center gap-1 text-[10px] text-destructive px-1">
               <AlertTriangle className="h-3 w-3" />
-              {t(($) => $.worktree_sidebar.diff_load_failed)}
+              {t(($) => $.worktree_sidebar.tree_load_failed)}
             </div>
           )}
-          {diffQuery.data && (
-            <DiffBody
-              diff={diffQuery.data}
+          {treeQuery.data && (
+            <TreeBody
+              tree={treeQuery.data}
               onFileClick={(path) => setFileOpen({ path })}
             />
           )}
@@ -310,31 +336,119 @@ function WorktreeRow({
 }
 
 // ============================================================================
-// Diff body — file tree grouped by directory
+// Tree body — full worktree directory tree
 // ============================================================================
+//
+// Replaces the old diff-only body. Walks the flat list returned by
+// /worktrees/:id/tree and folds it into a real nested directory tree so
+// the user can browse any file in the worktree, not just the ones that
+// changed. The structure is intentionally shallow-by-default: the root
+// level is open on first render, every subdirectory starts open too, and
+// the user can collapse any branch by clicking the chevron.
+//
+// The tree node map is rebuilt via useMemo whenever the underlying file
+// list changes (i.e. on a refetch). Memoization keeps the directory
+// buckets referentially stable across re-renders that don't change
+// `files`, which keeps child rows from re-rendering on unrelated parent
+// state changes (e.g. comment-card reactions triggering a top-level
+// re-render).
 
-function DiffBody({
-  diff,
+type TreeNode = {
+  /** Display name — last path segment. */
+  name: string;
+  /** Absolute path from worktree root, including this segment. */
+  path: string;
+  /** Direct children. Empty for leaf files. */
+  children: TreeNode[];
+  /** Set on file leaves. Undefined for directory nodes. */
+  file?: WorktreeTreeFile;
+  /** True when the node represents a directory (not a file). */
+  isDir: boolean;
+};
+
+/**
+ * Build a nested tree from the flat file list. The empty path "" is
+ * the root pseudo-node; every file with a non-empty path lands at the
+ * matching depth. Files with no slash (e.g. "README.md") are direct
+ * children of the root.
+ *
+ * Stable order: siblings are sorted alphabetically (case-insensitive)
+ * with directories first so a directory and its contents group
+ * together when the user opens the parent. Files that share the same
+ * name as a sibling directory would be ambiguous, but that can't
+ * happen on a real filesystem.
+ */
+function buildTree(files: WorktreeTreeFile[]): TreeNode {
+  const root: TreeNode = { name: "", path: "", children: [], isDir: true };
+  for (const file of files) {
+    const segments = file.path.split("/").filter(Boolean);
+    if (segments.length === 0) continue;
+    let current = root;
+    let acc = "";
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i]!;
+      acc = acc ? `${acc}/${seg}` : seg;
+      const isLeaf = i === segments.length - 1;
+      let child = current.children.find((c) => c.name === seg && c.isDir === !isLeaf);
+      if (!child) {
+        child = {
+          name: seg,
+          path: acc,
+          children: [],
+          isDir: !isLeaf,
+        };
+        if (isLeaf) child.file = file;
+        current.children.push(child);
+      } else if (isLeaf) {
+        // The path is a tracked file AND there's already a directory
+        // entry of the same name (impossible on a real filesystem but
+        // cheap to guard against). Prefer the file entry.
+        child.file = file;
+      }
+      current = child;
+    }
+  }
+  sortTree(root);
+  return root;
+}
+
+function sortTree(node: TreeNode): void {
+  node.children.sort((a, b) => {
+    if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  });
+  for (const child of node.children) sortTree(child);
+}
+
+/** Count of file leaves in a subtree (used for the per-folder count chip). */
+function countFiles(node: TreeNode): number {
+  if (!node.isDir) return 1;
+  let n = 0;
+  for (const child of node.children) n += countFiles(child);
+  return n;
+}
+
+/** Count of changed file leaves in a subtree (used for the change-count chip). */
+function countChanged(node: TreeNode): number {
+  if (!node.isDir) return node.file && node.file.status ? 1 : 0;
+  let n = 0;
+  for (const child of node.children) n += countChanged(child);
+  return n;
+}
+
+function TreeBody({
+  tree,
   onFileClick,
 }: {
-  diff: WorktreeDiffResponse;
+  tree: WorktreeTreeResponse;
   onFileClick: (path: string) => void;
 }) {
   const { t } = useT("issues");
-  const files = diff.files ?? [];
-  const unstaged = diff.unstaged_files ?? [];
-  const untracked = diff.untracked ?? [];
+  const files = tree.files ?? [];
 
-  // Group files by top-level directory for the file tree. The grouping
-  // is intentionally shallow (top-level dir + filename) so the tree
-  // stays scannable when a worktree touches many subdirs; the user can
-  // eyeball the changes at a glance. Memoized so the directory buckets
-  // stay referentially stable across re-renders that don't change
-  // `files` — keeps child FileRow components from re-rendering on
-  // unrelated parent state changes.
-  const grouped = useMemo(() => groupByDirectory(files), [files]);
+  const root = useMemo(() => buildTree(files), [files]);
 
-  if (files.length === 0 && unstaged.length === 0 && untracked.length === 0) {
+  if (files.length === 0) {
     return (
       <p className="px-1 text-[10px] text-muted-foreground">
         {t(($) => $.worktree_sidebar.files_empty)}
@@ -342,171 +456,153 @@ function DiffBody({
     );
   }
 
+  const totalFiles = files.length;
+  const changedCount = files.filter((f) => !!f.status).length;
+  const truncated = tree.truncated;
+  const totalCount = tree.total_count;
+
   return (
     <div className="space-y-1.5">
-      {diff.diff_truncated && (
+      <div className="flex items-center gap-1 px-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+        {t(($) => $.worktree_sidebar.files_section)}
+        <span className="font-mono tabular-nums">
+          {t(($) => $.worktree_sidebar.files_total, {
+            shown: totalFiles,
+            changed: changedCount,
+          })}
+        </span>
+      </div>
+      {truncated && (
         <p className="px-1 text-[10px] text-warning">
-          {t(($) => $.worktree_sidebar.diff_truncated)}
+          {t(($) => $.worktree_sidebar.tree_truncated, {
+            shown: totalFiles,
+            total: totalCount,
+          })}
         </p>
       )}
-      {files.length > 0 && (
-        <div>
-          <div className="flex items-center gap-1 px-1 mb-0.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-            {t(($) => $.worktree_sidebar.files_section)}
-            <span className="font-mono tabular-nums">{files.length}</span>
-          </div>
-          <DirectoryTree
-            grouped={grouped}
+      <ul className="space-y-0.5">
+        {root.children.map((child) => (
+          <TreeRow
+            key={child.path || child.name}
+            node={child}
+            depth={0}
             onFileClick={onFileClick}
-            emptyLabel={t(($) => $.worktree_sidebar.files_empty)}
           />
-        </div>
-      )}
-
-      {(unstaged.length > 0 || untracked.length > 0) && (
-        <div>
-          <div className="flex items-center gap-1 px-1 mb-0.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-            {t(($) => $.worktree_sidebar.unstaged_section)}
-            <span className="font-mono tabular-nums">
-              {t(($) => $.worktree_sidebar.unstaged_files, {
-                count: unstaged.length + untracked.length,
-              })}
-            </span>
-          </div>
-          <DirectoryTree
-            grouped={groupByDirectory(unstaged)}
-            onFileClick={onFileClick}
-            untrackedPaths={untracked}
-            emptyLabel={t(($) => $.worktree_sidebar.files_empty)}
-          />
-        </div>
-      )}
+        ))}
+      </ul>
     </div>
   );
 }
 
-// Group changes into { "src" → [WorktreeFileChange, ...], "src/foo" → [...], ... }
-// The DirectoryTree renderer folds these into a single, nested list. Top-level
-// entries with no slash ("README.md") live under the "root" bucket.
-function groupByDirectory(
-  files: WorktreeFileChange[],
-): Map<string, WorktreeFileChange[]> {
-  const out = new Map<string, WorktreeFileChange[]>();
-  for (const f of files) {
-    const idx = f.path.lastIndexOf("/");
-    const dir = idx >= 0 ? f.path.slice(0, idx) : "root";
-    const list = out.get(dir);
-    if (list) list.push(f);
-    else out.set(dir, [f]);
-  }
-  return out;
-}
-
-function DirectoryTree({
-  grouped,
-  untrackedPaths,
+function TreeRow({
+  node,
+  depth,
   onFileClick,
-  emptyLabel,
 }: {
-  grouped: Map<string, WorktreeFileChange[]>;
-  untrackedPaths?: string[];
+  node: TreeNode;
+  depth: number;
   onFileClick: (path: string) => void;
-  emptyLabel: string;
 }) {
   const { t } = useT("issues");
+  // Per-directory open/closed state. Falsy key means "use default" —
+  // the default is open at the root level (so a shallow tree unfolds
+  // on first paint) and closed below depth 1 (so a 200-file monorepo
+  // does not whitewash the sidebar with everything expanded).
   const [openDirs, setOpenDirs] = useState<Record<string, boolean>>({});
+  const isOpen = openDirs[node.path] ?? depth < 1;
+  const fileCount = countFiles(node);
+  const changedInNode = countChanged(node);
 
-  if (grouped.size === 0 && (!untrackedPaths || untrackedPaths.length === 0)) {
-    return <p className="px-1 text-[10px] text-muted-foreground">{emptyLabel}</p>;
+  if (!node.isDir) {
+    return (
+      <li>
+        <TreeFileRow file={node.file!} onClick={() => onFileClick(node.path)} />
+      </li>
+    );
   }
 
   return (
-    <ul className="space-y-0.5">
-      {[...grouped.entries()]
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([dir, files]) => {
-          const isOpen = openDirs[dir] ?? true;
-          return (
-            <li key={dir}>
-              <button
-                type="button"
-                onClick={() =>
-                  setOpenDirs((prev) => ({ ...prev, [dir]: !prev[dir] }))
-                }
-                className="flex w-full items-center gap-1 rounded px-1 py-0.5 text-[11px] text-muted-foreground hover:bg-accent/40 hover:text-foreground"
-              >
-                <ChevronRight
-                  className={cn(
-                    "!size-2.5 shrink-0 stroke-[2.5] transition-transform",
-                    isOpen ? "rotate-90" : "",
-                  )}
-                />
-                <Folder className="h-3 w-3 shrink-0" />
-                <span className="truncate font-mono">{dir === "root" ? "/" : dir}</span>
-                <span className="ml-auto font-mono tabular-nums text-[10px]">
-                  {files.length}
-                </span>
-              </button>
-              {isOpen && (
-                <ul className="ml-3 mt-0.5 space-y-0.5 border-l border-border/40 pl-2">
-                  {files.map((f) => (
-                    <FileRow key={f.path} file={f} onClick={() => onFileClick(f.path)} />
-                  ))}
-                </ul>
-              )}
-            </li>
-          );
-        })}
-      {untrackedPaths && untrackedPaths.length > 0 && (
-        <li>
-          <div className="flex items-center gap-1 rounded px-1 py-0.5 text-[11px] text-muted-foreground">
-            <ChevronRight className="!size-2.5 shrink-0 stroke-[2.5] rotate-90" />
-            <Folder className="h-3 w-3 shrink-0" />
-            <span className="truncate font-mono">
-              {t(($) => $.worktree_sidebar.untracked)}
+    <li>
+      <button
+        type="button"
+        onClick={() =>
+          setOpenDirs((prev) => ({ ...prev, [node.path]: !isOpen }))
+        }
+        className="flex w-full items-center gap-1 rounded px-1 py-0.5 text-[11px] text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+        aria-label={
+          isOpen
+            ? t(($) => $.worktree_sidebar.collapse_dir_aria, { path: node.path })
+            : t(($) => $.worktree_sidebar.expand_dir_aria, { path: node.path })
+        }
+      >
+        <ChevronRight
+          className={cn(
+            "!size-2.5 shrink-0 stroke-[2.5] transition-transform",
+            isOpen ? "rotate-90" : "",
+          )}
+        />
+        <Folder className="h-3 w-3 shrink-0" />
+        <span className="truncate font-mono">{node.name || "/"}</span>
+        <span className="ml-auto inline-flex items-center gap-1 font-mono tabular-nums text-[10px]">
+          {changedInNode > 0 && (
+            <span className="rounded bg-accent px-1 text-foreground/80">
+              {changedInNode}
             </span>
-            <span className="ml-auto font-mono tabular-nums text-[10px]">
-              {untrackedPaths.length}
-            </span>
-          </div>
-          <ul className="ml-3 mt-0.5 space-y-0.5 border-l border-border/40 pl-2">
-            {untrackedPaths.map((p) => (
-              <FileRow
-                key={p}
-                file={{ path: p, status: "??", additions: 0, deletions: 0, binary: false }}
-                onClick={() => onFileClick(p)}
-              />
-            ))}
-          </ul>
-        </li>
+          )}
+          <span>{fileCount}</span>
+        </span>
+      </button>
+      {isOpen && (
+        <ul
+          className="ml-3 mt-0.5 space-y-0.5 border-l border-border/40 pl-2"
+          // Each nesting level adds 12px of left padding via ml-3. That
+          // is a fine balance between "deep paths get pushed off the
+          // sidebar" and "two levels deep is invisible". The CSS is on
+          // the parent <ul> so the indent applies to every child
+          // uniformly.
+        >
+          {node.children.map((child) => (
+            <TreeRow
+              key={child.path || child.name}
+              node={child}
+              depth={depth + 1}
+              onFileClick={onFileClick}
+            />
+          ))}
+        </ul>
       )}
-    </ul>
+    </li>
   );
 }
 
-function FileRow({
+function TreeFileRow({
   file,
   onClick,
 }: {
-  file: WorktreeFileChange;
+  file: WorktreeTreeFile;
   onClick: () => void;
 }) {
   const { t } = useT("issues");
+  // `git status --porcelain` is two characters: index status then
+  // worktree status. The sidebar only cares about the visible effect
+  // ("did the user touch this file?"), so we fold both columns down
+  // to a single-letter badge.
+  const effectiveStatus = deriveFileStatus(file.status);
+
   const Icon =
     file.binary
       ? File
-      : file.status === "A" || file.status === "??"
+      : effectiveStatus === "A" || effectiveStatus === "??"
         ? FilePlus2
-        : file.status === "D"
+        : effectiveStatus === "D"
           ? FileMinus2
-          : file.status === "R" || file.status === "C"
+          : effectiveStatus === "R" || effectiveStatus === "C"
             ? Pencil
-            : file.status === "M"
-              ? FileCode2
-              : FileCode2;
+            : FileCode2;
 
   const statusLabel = (() => {
-    switch (file.status) {
+    if (!effectiveStatus) return null;
+    switch (effectiveStatus) {
       case "A": return t(($) => $.worktree_sidebar.file_status_added);
       case "D": return t(($) => $.worktree_sidebar.file_status_deleted);
       case "R": return t(($) => $.worktree_sidebar.file_status_renamed);
@@ -517,28 +613,63 @@ function FileRow({
 
   return (
     <li>
-      <button
-        type="button"
-        onClick={onClick}
-        className="flex w-full items-center gap-1.5 rounded px-1 py-0.5 text-[11px] text-foreground hover:bg-accent/40"
-      >
-        <Icon className="h-3 w-3 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate font-mono text-left">
-          {basename(file.path)}
-        </span>
-        <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
-          {statusLabel}
-        </span>
-        {!file.binary && (file.additions > 0 || file.deletions > 0) && (
-          <span className="shrink-0 font-mono tabular-nums text-[10px]">
-            <span className="text-success">+{file.additions}</span>
-            <span className="mx-0.5 text-muted-foreground">/</span>
-            <span className="text-destructive">-{file.deletions}</span>
-          </span>
-        )}
-      </button>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              onClick={onClick}
+              className="flex w-full items-center gap-1.5 rounded px-1 py-0.5 text-[11px] text-foreground hover:bg-accent/40"
+            >
+              <Icon className="h-3 w-3 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1 truncate font-mono text-left">
+                {basename(file.path)}
+              </span>
+              {statusLabel && (
+                <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {statusLabel}
+                </span>
+              )}
+              {!file.binary && (file.additions > 0 || file.deletions > 0) && (
+                <span className="shrink-0 font-mono tabular-nums text-[10px]">
+                  <span className="text-success">+{file.additions}</span>
+                  <span className="mx-0.5 text-muted-foreground">/</span>
+                  <span className="text-destructive">-{file.deletions}</span>
+                </span>
+              )}
+            </button>
+          }
+        />
+        {/* Full path on hover — file rows only show the basename because
+            the directory tree already conveys the path, but a Tooltip
+            on each row makes copy-by-screenshot easy without the user
+            having to expand the tree to its deepest level. */}
+        <TooltipContent side="right" className="font-mono text-xs">
+          {file.path}
+        </TooltipContent>
+      </Tooltip>
     </li>
   );
+}
+
+/**
+ * Collapse the two-column porcelain status into a single visible badge
+ * letter. Index and worktree columns are independent, so we pick the
+ * one that signals user action — anything in column 1 means the file
+ * is staged (intent-to-add counts), anything in column 2 means it was
+ * touched in the working tree. Renames/copies span both columns, so
+ * they show up as "R" / "C" regardless.
+ */
+function deriveFileStatus(status: string): string {
+  if (!status) return "";
+  if (status === "??") return "??";
+  if (status[0] === "R" || status[0] === "C") return "R";
+  if (status[1] === "R" || status[1] === "C") return "R";
+  if (status[0] === "A") return "A";
+  if (status[1] === "A") return "A";
+  if (status[0] === "D" || status[1] === "D") return "D";
+  if (status[0] === "M" || status[1] === "M") return "M";
+  return status;
 }
 
 function basename(path: string): string {

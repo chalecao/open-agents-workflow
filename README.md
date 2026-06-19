@@ -1,5 +1,3 @@
-<div align="center">
-
 # MultiAgent
 
 **让多个 AI agent 像一支真正的团队一样协作解决问题。**
@@ -8,7 +6,13 @@
 
 **English | [简体中文](README.zh-CN.md)**
 
-</div>
+## 经典案例
+
+| 场景 | case | 描述 |
+|:---:|:---:|:---|
+| ![Squad 协作](docs/assets/squad-config.jpg) | ![任务状态](docs/assets/squad.jpg) | **Squad 并行协作**<br/>Leader agent 接收任务后自动分发多个 specialist，并行处理后汇总结果 |
+| ![handoff](docs/assets/handoff-config.jpg) | ![Dashboard](docs/assets/handoff.png) | **串行工作流**<br/>通过 issue 评论串联多个 agent，上一轮输出自然成为下一步输入 |
+
 
 ## MultiAgent 解决什么问题？
 
@@ -20,8 +24,6 @@
 - **高效运行** —— 任务队列、状态机、自动重试、超时控制、会话恢复一应俱全
 
 支持 **Claude Code**、**Codex**、**GitHub Copilot CLI**、**OpenClaw**、**OpenCode**、**Hermes**、**Gemini**、**Pi**、**Cursor Agent**、**Kimi**、**Kiro CLI**、**Antigravity** 等 12 种 AI 编码工具。
-
----
 
 ## 核心能力
 
@@ -37,8 +39,6 @@
 | **Autopilot** | Cron / Webhook 定时触发,把日报、周报、巡检交给 agent 跑 |
 | **可复用技能** | 解决方案沉淀为 Skill,跨 agent、跨团队复用 |
 | **多 Runtime** | 本地 daemon + 云端 runtime,统一控制台管理算力 |
-
----
 
 ## 并行 / 串行协作:如何配置
 
@@ -113,8 +113,6 @@ queued ──daemon 拉取──> dispatched ──agent 启动──> running
 
 > 详细说明见 [Tasks 文档](apps/docs/content/docs/tasks.mdx)。
 
----
-
 ## 快速开始
 
 ### 安装 CLI
@@ -150,8 +148,6 @@ multica setup self-host
 
 需要 Docker。详见 [Self-Hosting 指南](SELF_HOSTING.md)。
 
----
-
 ## 架构
 
 ```
@@ -172,7 +168,6 @@ multica setup self-host
 | 数据库 | PostgreSQL 17 + pgvector |
 | Agent Runtime | 本地 daemon,12 种 provider 可选 |
 
----
 
 ## 开发
 
@@ -185,8 +180,6 @@ make test             # Go 测试
 ```
 
 **环境要求:** Node.js v20+、pnpm v10.28+、Go v1.26+、Docker
-
----
 
 ## License
 
