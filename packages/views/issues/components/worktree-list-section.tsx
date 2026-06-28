@@ -36,7 +36,6 @@ import type {
   WorktreeTreeResponse,
 } from "@multica/core/api/schemas";
 import { useT } from "../../i18n";
-import { ScrollArea } from "@multica/ui/components/ui/scroll-area";
 import { CodeBlock } from "@multica/ui/markdown/CodeBlock";
 
 // ============================================================================
@@ -706,7 +705,7 @@ function WorktreeFileDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+      <DialogContent className="!max-w-6xl !w-[90vw] max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-mono text-sm">
             {path && t(($) => $.worktree_sidebar.file_dialog_title, { path })}
@@ -715,7 +714,7 @@ function WorktreeFileDialog({
             {query.data && <FileSubtitle data={query.data} />}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-auto">
           {query.isLoading && (
             <div className="flex items-center gap-2 px-2 py-4 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -794,12 +793,15 @@ function FileBody({ data }: { data: WorktreeFileResponse }) {
     );
   }
 
+  // Detect language from file path extension
+  const language = getFileLanguage(data.path);
+
   // Two-pane side-by-side diff: before on the left, after on the right.
   // Empty before/after cells render a muted "no content" placeholder so
   // the user can tell which side is missing at a glance.
   return (
-    <ScrollArea className="h-full rounded border border-border/40">
-      <div className="grid grid-cols-2 divide-x divide-border/40 font-mono text-xs">
+    <div className="rounded border border-border/40">
+      <div className="grid grid-cols-2 divide-x divide-border/40">
         <div className="min-h-[200px]">
           {data.truncated && (
             <div className="border-b border-border/40 bg-warning/10 px-3 py-1 text-[10px] text-warning">
@@ -807,9 +809,7 @@ function FileBody({ data }: { data: WorktreeFileResponse }) {
             </div>
           )}
           {data.before ? (
-            <pre className="whitespace-pre-wrap break-all p-3 text-foreground/90">
-              {data.before}
-            </pre>
+            <CodeBlock code={data.before} language={language} mode="minimal" />
           ) : (
             <div className="flex h-full items-center justify-center p-4 text-[11px] text-muted-foreground">
               {t(($) => $.worktree_sidebar.file_dialog_no_before)}
@@ -823,9 +823,7 @@ function FileBody({ data }: { data: WorktreeFileResponse }) {
             </div>
           )}
           {data.after ? (
-            <pre className="whitespace-pre-wrap break-all p-3 text-foreground/90">
-              {data.after}
-            </pre>
+            <CodeBlock code={data.after} language={language} mode="minimal" />
           ) : (
             <div className="flex h-full items-center justify-center p-4 text-[11px] text-muted-foreground">
               {t(($) => $.worktree_sidebar.file_dialog_no_after)}
@@ -833,7 +831,7 @@ function FileBody({ data }: { data: WorktreeFileResponse }) {
           )}
         </div>
       </div>
-    </ScrollArea>
+    </div>
   );
 }
 
@@ -851,4 +849,81 @@ function useShortPath(id: string): string {
   const parts = id.split("/").filter(Boolean);
   if (parts.length <= 2) return id;
   return `…/${parts.slice(-2).join("/")}`;
+}
+
+// Language detection map from file extension
+const EXT_TO_LANGUAGE: Record<string, string> = {
+  js: "javascript",
+  jsx: "javascript",
+  ts: "typescript",
+  tsx: "typescript",
+  mjs: "javascript",
+  cjs: "javascript",
+  py: "python",
+  rb: "ruby",
+  go: "go",
+  rs: "rust",
+  java: "java",
+  kt: "kotlin",
+  swift: "swift",
+  cs: "csharp",
+  cpp: "cpp",
+  cc: "cpp",
+  cxx: "cpp",
+  c: "c",
+  h: "c",
+  hpp: "cpp",
+  php: "php",
+  ruby: "ruby",
+  yaml: "yaml",
+  yml: "yaml",
+  json: "json",
+  jsonc: "json",
+  xml: "xml",
+  html: "html",
+  htm: "html",
+  css: "css",
+  scss: "scss",
+  sass: "sass",
+  less: "less",
+  md: "markdown",
+  markdown: "markdown",
+  sql: "sql",
+  sh: "bash",
+  bash: "bash",
+  zsh: "bash",
+  fish: "bash",
+  ps1: "powershell",
+  psd1: "powershell",
+  psm1: "powershell",
+  dockerfile: "dockerfile",
+  makefile: "makefile",
+  toml: "toml",
+  ini: "ini",
+  cfg: "ini",
+  conf: "ini",
+  tf: "hcl",
+  hcl: "hcl",
+  vue: "vue",
+  svelte: "svelte",
+  svg: "svg",
+  png: "text",
+  jpg: "text",
+  jpeg: "text",
+  gif: "text",
+  webp: "text",
+  ico: "text",
+  pdf: "text",
+  zip: "text",
+  gz: "text",
+  tar: "text",
+};
+
+/**
+ * Detect language from file path for syntax highlighting.
+ * Uses the file extension to determine the language.
+ */
+function getFileLanguage(path: string): string {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  return EXT_TO_LANGUAGE[ext] ?? "text";
 }
